@@ -163,6 +163,43 @@ textarea{font-size:12px;direction:ltr;text-align:left;resize:vertical;font-famil
   padding:10px 20px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.25s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
+/* income, balance and budget */
+.facts b.neg{color:#ffb4a8}
+.amt.pos{color:var(--turq-ink)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--sunk);border-radius:14px;padding:4px;margin-bottom:14px}
+.seg button{border:0;background:none;color:var(--muted);font-size:14.5px;font-weight:700;padding:9px 0;border-radius:11px;cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--ink);font-weight:800;box-shadow:0 1px 4px rgba(10,14,40,.14)}
+.seg button.on[data-t="income"]{color:var(--turq-ink)}
+.linkbtn{background:none;border:0;color:var(--turq-ink);font-size:13.5px;font-weight:800;cursor:pointer;padding:2px 4px}
+.bcard{padding:16px 16px 6px}
+.bnum{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+.bnum b{font-size:22px;font-weight:800;line-height:1.5}
+.bnum b small{font-size:12px;font-weight:500;color:var(--muted);margin-inline-start:5px}
+.bnum span{font-size:13px;color:var(--muted)}
+.meter{height:10px;border-radius:6px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:6px;background:var(--turq)}
+.meter.warn i{background:var(--saffron)}
+.meter.over i{background:var(--madder)}
+.bnote{font-size:13px;color:var(--muted);margin:10px 0 8px;line-height:1.8}
+.bnote.over{color:var(--madder);font-weight:700}
+.bcats{margin-top:6px;border-top:1px solid var(--line)}
+.brow{display:flex;align-items:center;gap:12px;padding:11px 0}
+.brow+.brow{border-top:1px solid var(--line)}
+.brow .e{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:none}
+.brow .mid{flex:1;min-width:0}
+.brow .line{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.brow .line b{font-size:14px;font-weight:700}
+.brow .line span{font-size:12px;color:var(--muted);white-space:nowrap}
+.brow .line span.over{color:var(--madder);font-weight:700}
+.brow .meter{height:7px}
+.bempty{padding:18px 16px;text-align:center}
+.bempty b{display:block;font-size:15px;font-weight:800;margin-bottom:2px}
+.bempty span{display:block;font-size:13px;color:var(--muted);margin-bottom:12px}
+.lim{display:flex;align-items:center;gap:10px;padding:5px 0}
+.lim .e{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:18px;flex:none}
+.lim label{flex:1;font-weight:700;font-size:14.5px}
+.lim .inp{width:46%;font-size:15px;padding:9px 12px}
+
 /* welcome screen */
 .welcome{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;overflow:auto;color:#fff;
   background:radial-gradient(130% 55% at 50% 20%,#2a3d94 0%,#18246a 62%);
@@ -220,6 +257,7 @@ textarea{font-size:12px;direction:ltr;text-align:left;resize:vertical;font-famil
 
 <div class="overlay" id="ov-add"><div class="sheet" id="sheet-add" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-menu"><div class="sheet" id="sheet-menu" role="dialog" aria-modal="true"></div></div>
+<div class="overlay" id="ov-budget"><div class="sheet" id="sheet-budget" role="dialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" role="status"></div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="w-t" tabindex="-1"></div>
 
@@ -313,18 +351,40 @@ const CATS=[
   {id:'edu',n:'آموزش',e:'📚',c:'#4f6bed'},
   {id:'other',n:'سایر',e:'📦',c:'#8a93a8'}
 ];
-const CAT=Object.fromEntries(CATS.map(c=>[c.id,c]));
+const ICATS=[
+  {id:'salary',n:'حقوق',e:'💼',c:'#12a594'},
+  {id:'freelance',n:'پروژه',e:'💻',c:'#3aa0e0'},
+  {id:'gift',n:'هدیه',e:'🎁',c:'#d6457e'},
+  {id:'sale',n:'فروش',e:'🏷️',c:'#d9a21b'},
+  {id:'refund',n:'بازگشت پول',e:'↩️',c:'#7b61d9'},
+  {id:'in_other',n:'سایر',e:'💰',c:'#8a93a8'}
+];
+const CAT=Object.fromEntries(CATS.concat(ICATS).map(c=>[c.id,c]));
+const catsOf=t=>t==='income'?ICATS:CATS;
 const MODES=[['day','روزانه'],['week','هفتگی'],['month','ماهانه'],['year','سالانه']];
 const KEY='hazine-yar:v1';
 
-const state={expenses:[]};
+/* state.expenses holds both expenses and incomes (field "type"); old data without it counts as expense */
+const state={expenses:[],budget:{total:0,cats:{}}};
 const ui={mode:'month',anchor:todayISO(),first:true,seen:false};
-let storageOK=false, editing=null, formCat='food';
+let storageOK=false, editing=null, formCat='food', formType='expense';
 
 const normalize=x=>{
   if(!x||typeof x.amount!=='number'||!(x.amount>0)||!/^\d{4}-\d{2}-\d{2}$/.test(x.date||''))return null;
-  return{id:String(x.id||uid()),amount:Math.round(x.amount),cat:CAT[x.cat]?x.cat:'other',note:String(x.note||'').slice(0,80),date:x.date,ts:x.ts||Date.now()};
+  const type=x.type==='income'?'income':'expense';
+  const known=catsOf(type).some(c=>c.id===x.cat);
+  return{id:String(x.id||uid()),type,amount:Math.round(x.amount),cat:known?x.cat:(type==='income'?'in_other':'other'),note:String(x.note||'').slice(0,80),date:x.date,ts:x.ts||Date.now()};
 };
+const normBudget=b=>{
+  const out={total:0,cats:{}};
+  if(!b||typeof b!=='object')return out;
+  const n=v=>(typeof v==='number'&&isFinite(v)&&v>0)?Math.round(v):0;
+  out.total=n(b.total);
+  CATS.forEach(c=>{const v=n(b.cats&&b.cats[c.id]);if(v)out.cats[c.id]=v});
+  return out;
+};
+const hasBudget=b=>b.total>0||Object.keys(b.cats).length>0;
+const budgetTotal=b=>b.total>0?b.total:Object.keys(b.cats).reduce((a,k)=>a+b.cats[k],0);
 /* Inside Claude, window.storage is used. In a regular browser (hosted or opened
    as a file), the app falls back to the browser's own localStorage. */
 async function readRaw(){
@@ -348,11 +408,12 @@ async function load(){
       if(Array.isArray(d.expenses))state.expenses=d.expenses.map(normalize).filter(Boolean);
       if(MODES.some(m=>m[0]===d.mode))ui.mode=d.mode;
       ui.seen=!!d.seen;
+      state.budget=normBudget(d.budget);
     }
   }catch(e){/* first run: nothing saved yet */}
 }
 async function save(){
-  try{await writeRaw(JSON.stringify({expenses:state.expenses,mode:ui.mode,seen:ui.seen}))}
+  try{await writeRaw(JSON.stringify({expenses:state.expenses,budget:state.budget,mode:ui.mode,seen:ui.seen}))}
   catch(e){storageOK=false}
 }
 
@@ -398,6 +459,13 @@ const I={
 const TILE='<svg class="tile" aria-hidden="true"><defs><pattern id="girih" width="40" height="40" patternUnits="userSpaceOnUse"><g fill="none" stroke="currentColor" stroke-width="1.2"><rect x="8" y="8" width="24" height="24"/><rect x="8" y="8" width="24" height="24" transform="rotate(45 20 20)"/><circle cx="20" cy="20" r="4"/></g></pattern></defs><rect width="100%" height="100%" fill="url(#girih)"/></svg>';
 
 /* ---------- rendering ---------- */
+const spentOf=list=>list.filter(x=>x.type!=='income');
+const sumOf=list=>list.reduce((a,x)=>a+x.amount,0);
+function compactS(n){ // like compact(), but with a proper minus sign for negatives
+  if(n>=0)return compact(n);
+  const t=compact(-n),i=t.indexOf(' ');
+  return i<0?'<bdi dir="ltr">−'+t+'</bdi>':'<bdi dir="ltr">−'+t.slice(0,i)+'</bdi>'+t.slice(i);
+}
 function groupCats(list){
   const m={};
   list.forEach(x=>{const o=m[x.cat]||(m[x.cat]={c:CAT[x.cat],sum:0,n:0});o.sum+=x.amount;o.n++});
@@ -420,15 +488,50 @@ function buckets(mode,r,list){
   return b;
 }
 
+function budgetSection(mode,r,spent,cats,today,isCur,count){
+  if(mode!=='month'&&mode!=='year')return '';
+  const b=state.budget,mult=mode==='year'?12:1,j=gToJ(r.s);
+  if(!hasBudget(b)){
+    if(mode==='year'||!count)return '';
+    return '<section class="sec"><div class="panel bempty"><b>برای کنترل خرج، بودجه تعیین کن</b><span>سقف کل ماه و هر دسته را بگذار تا ببینی چقدر باقی مانده.</span><button class="btn soft" data-a="budget">تعیین بودجه</button></div></section>';
+  }
+  const tot=budgetTotal(b)*mult,used=sumOf(spent),ratio=used/tot;
+  const lv=ratio>1?' over':ratio>=.8?' warn':'';
+  let note;
+  if(used>tot)note='<div class="bnote over">'+fmt(used-tot)+' تومان بیشتر از بودجه خرج کرده‌ای</div>';
+  else{
+    let t=fmt(tot-used)+' تومان باقی‌مانده';
+    if(mode==='month'&&isCur&&tot>used)t+='؛ تا آخر ماه می‌توانی روزی '+fmt((tot-used)/(diffDays(today,r.e)+1))+' تومان خرج کنی';
+    else if(today>r.e)t+='؛ در بودجه ماندی';
+    note='<div class="bnote">'+t+'</div>';
+  }
+  const rows=CATS.filter(c=>b.cats[c.id]).map(c=>{
+    const lim=b.cats[c.id]*mult,hit=cats.find(x=>x.c.id===c.id),u=hit?hit.sum:0;
+    return{c:c,lim:lim,u:u,rt:u/lim};
+  }).sort((p,q)=>q.rt-p.rt);
+  const crow=rows.map(o=>{
+    const l=o.rt>1?' over':o.rt>=.8?' warn':'';
+    return '<div class="brow"><div class="e" style="background:'+hexA(o.c.c,.16)+'">'+o.c.e+'</div><div class="mid"><div class="line"><b>'+o.c.n+'</b>'
+      +'<span class="'+(o.rt>1?'over':'')+'">'+compact(o.u)+' از '+compact(o.lim)+'</span></div>'
+      +'<div class="meter'+l+'"><i style="width:'+Math.min(100,o.rt*100)+'%"></i></div></div></div>';
+  }).join('');
+  return '<section class="sec"><div class="sec-h"><h2>'+(mode==='year'?'بودجهٔ سال '+toFa(j.jy):'بودجهٔ '+JM[j.jm-1])+'</h2><button class="linkbtn" data-a="budget">تنظیم</button></div>'
+    +'<div class="panel bcard"><div class="bnum"><b>'+fmt(used)+'<small>تومان</small></b><span>از '+fmt(tot)+' تومان، '+toFa(Math.round(ratio*100))+'٪</span></div>'
+    +'<div class="meter'+lv+'"><i style="width:'+Math.min(100,ratio*100)+'%"></i></div>'+note
+    +(crow?'<div class="bcats">'+crow+'</div>':'')+'</div></section>';
+}
+
 function render(){
   const mode=ui.mode,today=todayISO(),r=range(mode,ui.anchor);
   const list=state.expenses.filter(x=>x.date>=r.s&&x.date<=r.e);
-  const total=list.reduce((a,x)=>a+x.amount,0);
+  const spent=spentOf(list);
+  const total=sumOf(spent);
+  const hasIncome=list.some(x=>x.type==='income');
+  const income=sumOf(list.filter(x=>x.type==='income'));
   const isCur=today>=r.s&&today<=r.e;
   const days=today<r.s?0:diffDays(r.s,today<r.e?today:r.e)+1;
   const avg=days?total/days:0;
-  const maxOne=list.reduce((a,x)=>Math.max(a,x.amount),0);
-  const cats=groupCats(list);
+  const cats=groupCats(spent);
 
   const todayJ=gToJ(today);
   const header='<header class="top"><div class="brand"><div class="mark">'+I.star(24)+'</div><div><h1>هزینه‌یار</h1><p>امروز '+WD[wIdx(today)]+' '+toFa(todayJ.jd)+' '+JM[todayJ.jm-1]+' '+toFa(todayJ.jy)+'</p></div></div>'
@@ -442,10 +545,13 @@ function render(){
   else sub='<small>'+{week:'هفتهٔ جاری',month:'ماه جاری',year:'سال جاری'}[mode]+'</small>';
   if(!isCur&&mode==='day'){const d=diffDays(today,r.s);if(d===-1)sub='<small>دیروز</small><button data-a="today">برو به امروز</button>';}
 
+  const balance=income-total;
+  const incF=[hasIncome?compact(income):'—','درآمد'];
+  const balF=[hasIncome?compactS(balance):'—','مانده',hasIncome&&balance<0];
   const facts=(mode==='day'
-    ?[[toFa(list.length),'هزینه ثبت‌شده'],[compact(maxOne),'بیشترین مبلغ'],[cats[0]?cats[0].c.n:'—','پرهزینه‌ترین دسته']]
-    :[[toFa(list.length),'هزینه ثبت‌شده'],[compact(avg),'میانگین روزانه'],[compact(maxOne),'بیشترین مبلغ']]
-  ).map(f=>'<div><b>'+f[0]+'</b><span>'+f[1]+'</span></div>').join('');
+    ?[incF,balF,[toFa(spent.length),'هزینه ثبت‌شده']]
+    :[incF,balF,[compact(avg),'میانگین روزانه']]
+  ).map(f=>'<div><b'+(f[2]?' class="neg"':'')+'>'+f[0]+'</b><span>'+f[1]+'</span></div>').join('');
 
   const cap={day:'مجموع هزینه‌های روز',week:'مجموع هزینه‌های هفته',month:'مجموع هزینه‌های ماه',year:'مجموع هزینه‌های سال'}[mode];
   const totalStr=fmt(total);
@@ -456,14 +562,14 @@ function render(){
     +'<div class="caption">'+cap+'</div><div class="total"><b>'+totalStr+'</b><span>تومان</span></div>'
     +'<div class="facts">'+facts+'</div></section>';
 
-  let body='';
+  let body=budgetSection(mode,r,spent,cats,today,isCur,list.length);
   if(!list.length){
-    body='<div class="empty">'+I.star(46)+'<b>در این بازه هزینه‌ای ثبت نشده</b>برای شروع، دکمهٔ «ثبت هزینه» را بزن.'
+    body+='<div class="empty">'+I.star(46)+'<b>در این بازه چیزی ثبت نشده</b>برای شروع، دکمهٔ «ثبت جدید» را بزن.'
       +(state.expenses.length===0?'<br><button class="link" data-a="sample">امتحان با داده‌های نمونه</button>':'')+'</div>';
   }else{
     // trend
-    if(mode!=='day'){
-      const b=buckets(mode,r,list),vals=b.map(x=>x.v),mx=Math.max.apply(null,vals),mi=vals.indexOf(mx);
+    if(mode!=='day'&&total>0){
+      const b=buckets(mode,r,spent),vals=b.map(x=>x.v),mx=Math.max.apply(null,vals),mi=vals.indexOf(mx);
       const bars=b.map((x,i)=>{
         const h=x.v?Math.max(x.v/mx*100,3):0;
         const cur=mode==='year'?(todayJ.jy===x.jy&&todayJ.jm===x.jm):x.d===today;
@@ -476,7 +582,7 @@ function render(){
         +'<div class="bars'+(ui.first?' anim':'')+'" style="--g:'+(b.length>12?'3px':'8px')+'">'+bars+'</div></section>';
     }
     // categories
-    body+='<section class="sec"><div class="sec-h"><h2>هزینه به تفکیک دسته</h2><span>'+toFa(cats.length)+' دسته</span></div><div class="panel pad">'
+    if(cats.length)body+='<section class="sec"><div class="sec-h"><h2>هزینه به تفکیک دسته</h2><span>'+toFa(cats.length)+' دسته</span></div><div class="panel pad">'
       +'<div class="stack">'+cats.map(c=>'<i style="flex:'+c.sum+';background:'+c.c.c+'"></i>').join('')+'</div>'
       +cats.map(c=>'<div class="row"><div class="ico" style="background:'+hexA(c.c.c,.16)+'">'+c.c.e+'</div>'
         +'<div class="mid"><div class="name">'+c.c.n+'</div><div class="sub">'+toFa(c.n)+' هزینه</div></div>'
@@ -486,20 +592,20 @@ function render(){
     const sorted=list.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
     const groups=[];
     sorted.forEach(x=>{const g=groups[groups.length-1];if(g&&g.date===x.date)g.items.push(x);else groups.push({date:x.date,items:[x]})});
-    body+='<section class="sec"><div class="sec-h"><h2>فهرست هزینه‌ها</h2><span>'+toFa(list.length)+' مورد</span></div>'
+    body+='<section class="sec"><div class="sec-h"><h2>'+(hasIncome?'فهرست هزینه‌ها و درآمدها':'فهرست هزینه‌ها')+'</h2><span>'+toFa(list.length)+' مورد</span></div>'
       +groups.map(g=>{
-        const sum=g.items.reduce((a,x)=>a+x.amount,0);
-        return '<div class="day"><div class="day-h"><span>'+dayName(g.date,today)+'</span><b>'+fmt(sum)+' تومان</b></div><div class="panel">'
-          +g.items.map(x=>{const c=CAT[x.cat];
+        const sum=sumOf(spentOf(g.items));
+        return '<div class="day"><div class="day-h"><span>'+dayName(g.date,today)+'</span><b>'+(sum?fmt(sum)+' تومان':'')+'</b></div><div class="panel">'
+          +g.items.map(x=>{const c=CAT[x.cat],inc=x.type==='income';
             return '<button class="row" data-a="edit" data-id="'+x.id+'"><div class="ico" style="background:'+hexA(c.c,.16)+'">'+c.e+'</div>'
-              +'<div class="mid"><div class="name">'+(x.note?esc(x.note):c.n)+'</div>'+(x.note?'<div class="sub">'+c.n+'</div>':'')+'</div>'
-              +'<div class="amt">'+fmt(x.amount)+'<em>تومان</em></div></button>';}).join('')
+              +'<div class="mid"><div class="name">'+(x.note?esc(x.note):c.n)+'</div>'+(x.note?'<div class="sub">'+c.n+'</div>':(inc?'<div class="sub">درآمد</div>':''))+'</div>'
+              +'<div class="amt'+(inc?' pos':'')+'">'+(inc?'<bdi dir="ltr">+'+fmt(x.amount)+'</bdi>':fmt(x.amount))+'<em>تومان</em></div></button>';}).join('')
           +'</div></div>';
       }).join('')+'</section>';
   }
 
   const foot=storageOK?'':'<p class="foot">ذخیره‌سازی خودکار در این محیط فعال نیست. از منوی بالا، پشتیبان بگیر تا اطلاعاتت از بین نرود.</p>';
-  const fab='<button class="fab" data-a="add">'+I.plus+'ثبت هزینه</button>';
+  const fab='<button class="fab" data-a="add">'+I.plus+'ثبت جدید</button>';
 
   $('#root').innerHTML=header+tabs+hero+body+foot+fab;
 }
@@ -523,21 +629,36 @@ function setDate(s){
   $('#f-y').value=j.jy;$('#f-m').value=j.jm;
   $('#f-d').innerHTML=dayOpts(j.jy,j.jm,j.jd);
 }
+const T_TEXT={
+  expense:{title:'هزینهٔ جدید',edit:'ویرایش هزینه',save:'ثبت هزینه',del:'حذف هزینه',ph:'مثلاً ناهار با همکارها (اختیاری)',done:'هزینه ثبت شد',gone:'هزینه حذف شد',label:'دسته'},
+  income:{title:'درآمد جدید',edit:'ویرایش درآمد',save:'ثبت درآمد',del:'حذف درآمد',ph:'مثلاً حقوق مهر (اختیاری)',done:'درآمد ثبت شد',gone:'درآمد حذف شد',label:'منبع'}
+};
+const catGrid=()=>catsOf(formType).map(c=>'<button class="cat'+(c.id===formCat?' on':'')+'" data-a="cat" data-c="'+c.id+'"><span class="e">'+c.e+'</span>'+c.n+'</button>').join('');
 function openAdd(id){
   editing=id?state.expenses.find(x=>x.id===id):null;
-  const e=editing||{amount:0,cat:'food',note:'',date:ui.mode==='day'?ui.anchor:todayISO()};
+  const e=editing||{type:'expense',amount:0,cat:'food',note:'',date:ui.mode==='day'?ui.anchor:todayISO()};
+  formType=e.type==='income'?'income':'expense';
   formCat=e.cat;
+  const T=T_TEXT[formType];
   $('#sheet-add').innerHTML=
-    '<div class="s-head"><h2>'+(editing?'ویرایش هزینه':'هزینهٔ جدید')+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
-    +'<div class="amount"><input id="f-amount" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ" value="'+(e.amount?fmt(e.amount):'')+'"><span>تومان</span></div>'
-    +'<div class="fl">دسته</div><div class="cats">'+CATS.map(c=>'<button class="cat'+(c.id===formCat?' on':'')+'" data-a="cat" data-c="'+c.id+'"><span class="e">'+c.e+'</span>'+c.n+'</button>').join('')+'</div>'
-    +'<div class="fl">توضیح</div><input id="f-note" class="inp" maxlength="80" placeholder="مثلاً ناهار با همکارها (اختیاری)" value="'+esc(e.note)+'">'
+    '<div class="s-head"><h2 id="f-title">'+(editing?T.edit:T.title)+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    +(editing?'':'<div class="seg" role="group" aria-label="نوع ثبت"><button class="on" data-a="type" data-t="expense" aria-pressed="true">هزینه</button><button data-a="type" data-t="income" aria-pressed="false">درآمد</button></div>')
+    +'<div class="amount"><input id="f-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ" value="'+(e.amount?fmt(e.amount):'')+'"><span>تومان</span></div>'
+    +'<div class="fl" id="f-catlabel">'+T.label+'</div><div class="cats" id="f-cats">'+catGrid()+'</div>'
+    +'<div class="fl">توضیح</div><input id="f-note" class="inp" maxlength="80" placeholder="'+T.ph+'" value="'+esc(e.note)+'">'
     +'<div class="fl">تاریخ</div>'+dateFields(e.date)
     +'<div class="quick"><button class="chip" data-a="quick" data-q="0">امروز</button><button class="chip" data-a="quick" data-q="-1">دیروز</button></div>'
-    +'<button class="btn primary" data-a="save">'+(editing?'ذخیره تغییرات':'ثبت هزینه')+'</button>'
-    +(editing?'<button class="btn danger" data-a="del">حذف هزینه</button>':'');
+    +'<button class="btn primary" id="f-save" data-a="save">'+(editing?'ذخیره تغییرات':T.save)+'</button>'
+    +(editing?'<button class="btn danger" data-a="del">'+T.del+'</button>':'');
   $('#ov-add').classList.add('open');
   if(!editing)setTimeout(()=>{const f=$('#f-amount');if(f)f.focus()},320);
+}
+function setType(t){
+  formType=t;formCat=catsOf(t)[0].id;
+  const T=T_TEXT[t];
+  $('#f-title').textContent=T.title;$('#f-catlabel').textContent=T.label;
+  $('#f-cats').innerHTML=catGrid();$('#f-note').placeholder=T.ph;$('#f-save').textContent=T.save;
+  document.querySelectorAll('.seg button').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
 }
 function doSave(){
   const amount=+toEn($('#f-amount').value).replace(/\D/g,'')||0;
@@ -546,11 +667,38 @@ function doSave(){
   const note=$('#f-note').value.trim().slice(0,80);
   const wasEdit=!!editing;
   if(editing)Object.assign(editing,{amount,cat:formCat,note,date});
-  else state.expenses.push({id:uid(),amount:amount,cat:formCat,note:note,date:date,ts:Date.now()});
+  else state.expenses.push({id:uid(),type:formType,amount:amount,cat:formCat,note:note,date:date,ts:Date.now()});
   const r=range(ui.mode,ui.anchor);
   if(date<r.s||date>r.e)ui.anchor=date;
+  const doneMsg=T_TEXT[formType].done;
   closeSheets();save();render();
-  toast(wasEdit?'تغییرات ذخیره شد':'هزینه ثبت شد');
+  toast(wasEdit?'تغییرات ذخیره شد':doneMsg);
+}
+
+/* ---------- budget sheet ---------- */
+function openBudget(){
+  const b=state.budget;
+  $('#sheet-budget').innerHTML=
+    '<div class="s-head"><h2>بودجهٔ ماهانه</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    +'<p class="note">این بودجه برای همهٔ ماه‌ها حساب می‌شود و در نمای سالانه، ۱۲ برابر می‌شود. هر وقت خواستی عوضش کن.</p>'
+    +'<div class="fl" style="margin-top:0">کل بودجهٔ هر ماه</div>'
+    +'<div class="amount"><input id="b-total" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="کل بودجهٔ ماهانه" value="'+(b.total?fmt(b.total):'')+'"><span>تومان</span></div>'
+    +'<div class="fl">سقف هر دسته (اختیاری)</div>'
+    +CATS.map(c=>'<div class="lim"><div class="e" style="background:'+hexA(c.c,.16)+'">'+c.e+'</div><label for="b-'+c.id+'">'+c.n+'</label>'
+      +'<input id="b-'+c.id+'" class="inp numin" inputmode="numeric" autocomplete="off" placeholder="بدون سقف" value="'+(b.cats[c.id]?fmt(b.cats[c.id]):'')+'"></div>').join('')
+    +'<p class="note" style="margin-top:10px">اگر «کل بودجه» را خالی بگذاری، جمع سقف دسته‌ها حساب می‌شود.</p>'
+    +'<button class="btn primary" data-a="b-save">ذخیرهٔ بودجه</button>'
+    +(hasBudget(b)?'<button class="btn danger" data-a="b-del">حذف بودجه</button>':'');
+  $('#ov-budget').classList.add('open');
+  const f=$('#b-total');if(f&&!hasBudget(b))setTimeout(()=>f.focus(),320);
+}
+function saveBudget(){
+  const val=id=>+toEn($('#'+id).value).replace(/\D/g,'')||0;
+  const nb={total:val('b-total'),cats:{}};
+  CATS.forEach(c=>{const v=val('b-'+c.id);if(v)nb.cats[c.id]=v});
+  state.budget=normBudget(nb);
+  closeSheets();save();render();
+  toast(hasBudget(state.budget)?'بودجه ذخیره شد':'بودجه‌ای تعیین نشد');
 }
 
 /* ---------- backup sheet ---------- */
@@ -571,12 +719,13 @@ function openMenu(){
         +(deferredInstall?'<button class="btn soft" data-a="install">نصب برنامه</button>':'')
         +'<div class="fl">پشتیبان‌گیری</div>'
       :'')
-    +'<p class="note">همهٔ هزینه‌ها در متن زیر هستند. آن را کپی کن و جایی نگه دار. هر وقت خواستی، متن را همین‌جا بچسبان و «بازیابی» را بزن.</p>'
+    +'<p class="note">هزینه‌ها، درآمدها و بودجه در متن زیر هستند. آن را کپی کن و جایی نگه دار. هر وقت خواستی، متن را همین‌جا بچسبان و «بازیابی» را بزن.</p>'
     +'<textarea id="bk" rows="7" spellcheck="false"></textarea>'
     +'<div class="two"><button class="btn soft" data-a="copy">کپی متن</button><button class="btn soft" data-a="restore">بازیابی</button></div>'
+    +'<button class="btn soft" style="margin-top:8px" data-a="budget">'+(hasBudget(state.budget)?'تنظیم بودجهٔ ماهانه':'تعیین بودجهٔ ماهانه')+'</button>'
     +'<button class="btn soft" style="margin-top:8px" data-a="welcome">دیدن معرفی برنامه</button>'
-    +'<button class="btn danger" data-a="clear">حذف همهٔ هزینه‌ها</button>';
-  $('#bk').value=JSON.stringify({v:1,expenses:state.expenses});
+    +'<button class="btn danger" data-a="clear">حذف همهٔ هزینه‌ها و درآمدها</button>';
+  $('#bk').value=JSON.stringify({v:2,expenses:state.expenses,budget:state.budget});
   $('#ov-menu').classList.add('open');
 }
 function restore(){
@@ -586,8 +735,13 @@ function restore(){
     const have=new Set(state.expenses.map(x=>x.id));
     let n=0;
     arr.map(normalize).filter(Boolean).forEach(x=>{if(!have.has(x.id)){state.expenses.push(x);have.add(x.id);n++}});
+    let gotBudget=false;
+    if(!Array.isArray(d)&&d.budget&&!hasBudget(state.budget)){
+      const nb=normBudget(d.budget);
+      if(hasBudget(nb)){state.budget=nb;gotBudget=true}
+    }
     closeSheets();save();render();
-    toast(n?toFa(n)+' هزینه اضافه شد':'هزینهٔ جدیدی پیدا نشد');
+    toast(n?toFa(n)+' مورد اضافه شد':gotBudget?'بودجه بازیابی شد':'مورد جدیدی پیدا نشد');
   }catch(e){toast('متن پشتیبان معتبر نیست')}
 }
 async function copyBackup(){
@@ -634,7 +788,7 @@ function closeWelcome(){
 }
 
 /* ---------- misc ---------- */
-function closeSheets(){$('#ov-add').classList.remove('open');$('#ov-menu').classList.remove('open');editing=null}
+function closeSheets(){$('#ov-add').classList.remove('open');$('#ov-menu').classList.remove('open');$('#ov-budget').classList.remove('open');editing=null}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1900)}
 function confirmTwice(btn,armedText){
   if(btn.dataset.armed)return true;
@@ -660,10 +814,15 @@ function sampleData(){
     for(let k=0;k<n;k++){
       let p=rnd()*wsum,t=T[0];for(const x of T){if(p<x[3]){t=x;break}p-=x[3]}
       const amount=Math.round((t[2][0]+rnd()*(t[2][1]-t[2][0]))/5)*5000;
-      out.push({id:uid(),amount:amount,cat:t[0],note:t[1][Math.floor(rnd()*t[1].length)],date:addDays(today,-i),ts:Date.now()-i*1000-k});
+      out.push({id:uid(),type:'expense',amount:amount,cat:t[0],note:t[1][Math.floor(rnd()*t[1].length)],date:addDays(today,-i),ts:Date.now()-i*1000-k});
     }
+    // sample income: a salary on the 1st of each Persian month and now and then a project
+    const d=addDays(today,-i),jd=gToJ(d).jd;
+    if(jd===1)out.push({id:uid(),type:'income',amount:15000000,cat:'salary',note:'حقوق',date:d,ts:Date.now()-i*1000-900});
+    else if(jd===12&&rnd()<.6)out.push({id:uid(),type:'income',amount:Math.round((2+rnd()*3)*2)*500000,cat:'freelance',note:'پروژه',date:d,ts:Date.now()-i*1000-901});
   }
   state.expenses=out;
+  if(!hasBudget(state.budget))state.budget={total:12000000,cats:{food:4000000,transport:1500000,fun:1500000}};
 }
 
 /* ---------- events ---------- */
@@ -679,11 +838,20 @@ document.addEventListener('click',e=>{
     case 'add':openAdd();break;
     case 'edit':openAdd(el.dataset.id);break;
     case 'cat':formCat=el.dataset.c;document.querySelectorAll('.cat').forEach(b=>b.classList.toggle('on',b.dataset.c===formCat));break;
+    case 'type':setType(el.dataset.t);break;
+    case 'budget':closeSheets();openBudget();break;
+    case 'b-save':saveBudget();break;
+    case 'b-del':
+      if(confirmTwice(el,'برای حذف، دوباره لمس کن')){
+        state.budget=normBudget(null);closeSheets();save();render();toast('بودجه حذف شد');
+      }
+      break;
     case 'quick':setDate(addDays(todayISO(),+el.dataset.q));break;
     case 'save':doSave();break;
     case 'del':
       if(confirmTwice(el,'برای حذف، دوباره لمس کن')){
-        state.expenses=state.expenses.filter(x=>x!==editing);closeSheets();save();render();toast('هزینه حذف شد');
+        const goneMsg=T_TEXT[formType].gone;
+        state.expenses=state.expenses.filter(x=>x!==editing);closeSheets();save();render();toast(goneMsg);
       }
       break;
     case 'menu':openMenu();break;
@@ -698,7 +866,7 @@ document.addEventListener('click',e=>{
     case 'restore':restore();break;
     case 'clear':
       if(confirmTwice(el,'برای حذف همه، دوباره لمس کن')){
-        state.expenses=[];closeSheets();save();render();toast('همهٔ هزینه‌ها حذف شد');
+        state.expenses=[];closeSheets();save();render();toast('همهٔ هزینه‌ها و درآمدها حذف شد');
       }
       break;
     case 'sample':sampleData();save();render();break;
@@ -708,7 +876,7 @@ document.addEventListener('click',e=>{
   }
 });
 document.addEventListener('input',e=>{
-  if(e.target.id==='f-amount'){
+  if(e.target.classList&&e.target.classList.contains('numin')){
     const n=toEn(e.target.value).replace(/\D/g,'').slice(0,13);
     e.target.value=n?fmt(+n):'';
   }
@@ -717,6 +885,9 @@ document.addEventListener('change',e=>{if(e.target.id==='f-m'||e.target.id==='f-
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(welcomeOpen())closeWelcome();else closeSheets()}
   if(e.key==='Enter'&&e.target.id==='f-note')doSave();
+  if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('numin')){
+    if(e.target.closest('#sheet-budget'))saveBudget();else if(e.target.id==='f-amount')doSave();
+  }
 });
 
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
