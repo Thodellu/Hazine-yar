@@ -4,9 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
+<script>try{var t=localStorage.getItem('hazine-yar:theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 <title>هزینه‌یار</title>
-<meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0c1122" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f6f8" media="(prefers-color-scheme: light)" data-c="#f4f6f8" data-m="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c1122" media="(prefers-color-scheme: dark)" data-c="#0c1122" data-m="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -23,11 +24,16 @@
   --lapis:#1c2b73; --turq:#12a594; --turq-ink:#0a7a6c; --saffron:#f4b73f; --saffron-ink:#1c2150; --madder:#d03e3e;
 }
 @media (prefers-color-scheme: dark){
-  :root{
+  :root:not([data-theme="light"]){
     color-scheme: dark;
     --bg:#0c1122; --surface:#141a33; --sunk:#1d2444; --ink:#e9ecfb; --muted:#8f98bd; --line:#252d52;
     --lapis:#243586; --turq:#2dd4bf; --turq-ink:#2dd4bf; --madder:#ff7a70;
   }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#0c1122; --surface:#141a33; --sunk:#1d2444; --ink:#e9ecfb; --muted:#8f98bd; --line:#252d52;
+  --lapis:#243586; --turq:#2dd4bf; --turq-ink:#2dd4bf; --madder:#ff7a70;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
@@ -47,7 +53,8 @@ html,body{overscroll-behavior-y:contain}
 .mark{width:40px;height:40px;border-radius:12px;background:var(--lapis);color:#fff;display:grid;place-items:center}
 .brand h1{margin:0;font-size:21px;font-weight:800;line-height:1.25}
 .brand p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.4}
-.icon{width:40px;height:40px;border-radius:50%;border:0;background:var(--sunk);color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.icon{position:relative;width:40px;height:40px;border-radius:50%;border:0;background:var(--sunk);color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.icon .dot{position:absolute;top:5px;right:6px;width:11px;height:11px;border-radius:50%;background:var(--saffron);border:2px solid var(--bg)}
 
 /* tabs */
 .tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:16px}
@@ -163,6 +170,14 @@ textarea{font-size:12px;direction:ltr;text-align:left;resize:vertical;font-famil
   padding:10px 20px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.25s}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
+/* settings sheet */
+.seg.three{grid-template-columns:repeat(3,1fr)}
+details.fold{margin-top:12px;border-top:1px solid var(--line)}
+details.fold summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--muted);padding:12px 2px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+details.fold summary::-webkit-details-marker{display:none}
+details.fold summary::after{content:"+";font-size:20px;line-height:1}
+details.fold[open] summary::after{content:"−"}
+
 /* income, balance and budget */
 .facts b.neg{color:#ffb4a8}
 .amt.pos{color:var(--turq-ink)}
@@ -258,6 +273,7 @@ textarea{font-size:12px;direction:ltr;text-align:left;resize:vertical;font-famil
 <div class="overlay" id="ov-add"><div class="sheet" id="sheet-add" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-menu"><div class="sheet" id="sheet-menu" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-budget"><div class="sheet" id="sheet-budget" role="dialog" aria-modal="true"></div></div>
+<input type="file" id="bk-file" accept=".json,application/json,text/plain" hidden>
 <div class="toast" id="toast" role="status"></div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="w-t" tabindex="-1"></div>
 
@@ -366,8 +382,9 @@ const KEY='hazine-yar:v1';
 
 /* state.expenses holds both expenses and incomes (field "type"); old data without it counts as expense */
 const state={expenses:[],budget:{total:0,cats:{}}};
-const ui={mode:'month',anchor:todayISO(),first:true,seen:false};
+const ui={mode:'month',anchor:todayISO(),first:true,seen:false,theme:'auto',backedUp:0};
 let storageOK=false, editing=null, formCat='food', formType='expense';
+try{const t0=window.localStorage.getItem('hazine-yar:theme');if(t0==='light'||t0==='dark')ui.theme=t0}catch(e){/* no storage: stays auto */}
 
 const normalize=x=>{
   if(!x||typeof x.amount!=='number'||!(x.amount>0)||!/^\d{4}-\d{2}-\d{2}$/.test(x.date||''))return null;
@@ -409,12 +426,29 @@ async function load(){
       if(MODES.some(m=>m[0]===d.mode))ui.mode=d.mode;
       ui.seen=!!d.seen;
       state.budget=normBudget(d.budget);
+      if(THEMES.some(t=>t[0]===d.theme))ui.theme=d.theme;
+      ui.backedUp=(typeof d.backedUp==='number'&&d.backedUp>0)?d.backedUp:0;
     }
   }catch(e){/* first run: nothing saved yet */}
+  applyTheme();
 }
 async function save(){
-  try{await writeRaw(JSON.stringify({expenses:state.expenses,budget:state.budget,mode:ui.mode,seen:ui.seen}))}
+  try{await writeRaw(JSON.stringify({expenses:state.expenses,budget:state.budget,mode:ui.mode,seen:ui.seen,theme:ui.theme,backedUp:ui.backedUp}))}
   catch(e){storageOK=false}
+}
+
+/* ---------- theme (auto follows the phone; light / dark are forced) ---------- */
+const THEMES=[['auto','خودکار'],['light','روشن'],['dark','تیره']];
+const THEME_BG={light:'#f4f6f8',dark:'#0c1122'};
+function applyTheme(){
+  const t=THEMES.some(x=>x[0]===ui.theme)?ui.theme:'auto';
+  const root=document.documentElement;
+  if(t==='auto')root.removeAttribute('data-theme');else root.setAttribute('data-theme',t);
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m=>{
+    if(t==='auto'){m.setAttribute('content',m.dataset.c);m.setAttribute('media',m.dataset.m)}
+    else{m.setAttribute('content',THEME_BG[t]);m.removeAttribute('media')}
+  });
+  try{if(t==='auto')window.localStorage.removeItem('hazine-yar:theme');else window.localStorage.setItem('hazine-yar:theme',t)}catch(e){/* storage blocked: theme still applies for this visit */}
 }
 
 /* ---------- periods ---------- */
@@ -535,7 +569,7 @@ function render(){
 
   const todayJ=gToJ(today);
   const header='<header class="top"><div class="brand"><div class="mark">'+I.star(24)+'</div><div><h1>هزینه‌یار</h1><p>امروز '+WD[wIdx(today)]+' '+toFa(todayJ.jd)+' '+JM[todayJ.jm-1]+' '+toFa(todayJ.jy)+'</p></div></div>'
-    +'<button class="icon" data-a="menu" aria-label="پشتیبان‌گیری">'+I.more+'</button></header>';
+    +'<button class="icon" data-a="menu" aria-label="تنظیمات و پشتیبان‌گیری">'+I.more+(needsBackup()?'<span class="dot" aria-hidden="true"></span>':'')+'</button></header>';
 
   const tabs='<nav class="tabs" role="tablist">'+MODES.map(m=>'<button role="tab" aria-selected="'+(m[0]===mode)+'" class="'+(m[0]===mode?'on':'')+'" data-a="mode" data-m="'+m[0]+'">'+m[1]+'</button>').join('')+'</nav>';
 
@@ -658,7 +692,7 @@ function setType(t){
   const T=T_TEXT[t];
   $('#f-title').textContent=T.title;$('#f-catlabel').textContent=T.label;
   $('#f-cats').innerHTML=catGrid();$('#f-note').placeholder=T.ph;$('#f-save').textContent=T.save;
-  document.querySelectorAll('.seg button').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
+  document.querySelectorAll('#sheet-add .seg button').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
 }
 function doSave(){
   const amount=+toEn($('#f-amount').value).replace(/\D/g,'')||0;
@@ -701,7 +735,103 @@ function saveBudget(){
   toast(hasBudget(state.budget)?'بودجه ذخیره شد':'بودجه‌ای تعیین نشد');
 }
 
-/* ---------- backup sheet ---------- */
+/* ---------- backup, restore and export ---------- */
+const DAY_MS=864e5, STALE_MS=14*DAY_MS;
+/* nudge (a small dot on the menu button) when there is data that was never saved to a file, or new data since an old backup */
+const needsBackup=()=>state.expenses.length>0&&(!ui.backedUp||(Date.now()-ui.backedUp>STALE_MS&&state.expenses.some(x=>(x.ts||0)>ui.backedUp)));
+const pad2=n=>String(n).padStart(2,'0');
+function stampName(){const j=gToJ(todayISO());return j.jy+'-'+pad2(j.jm)+'-'+pad2(j.jd)}
+function lastBackupText(){
+  if(!ui.backedUp)return 'هنوز فایل پشتیبانی نگرفته‌ای.';
+  const d=new Date(ui.backedUp),j=gToJ(iso(d.getFullYear(),d.getMonth()+1,d.getDate()));
+  const days=Math.floor((Date.now()-ui.backedUp)/DAY_MS);
+  return 'آخرین پشتیبان: '+toFa(j.jd)+' '+JM[j.jm-1]+(days>0?' ('+toFa(days)+' روز پیش)':' (امروز)');
+}
+const backupText=()=>JSON.stringify({app:'hazine-yar',v:3,exportedAt:new Date().toISOString(),expenses:state.expenses,budget:state.budget});
+
+const touchDevice=()=>!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
+/* Phones: the share sheet (Save to Files, AirDrop, Telegram...). Everything else: a normal download.
+   Resolves true when the file was handed over, false when the person cancelled. */
+async function saveFile(name,mime,text){
+  const blob=new Blob([text],{type:mime});
+  if(touchDevice()&&navigator.canShare&&typeof File==='function'){
+    try{
+      const f=new File([blob],name,{type:mime});
+      if(navigator.canShare({files:[f]})){await navigator.share({files:[f]});return true}
+    }catch(e){if(e&&e.name==='AbortError')return false}
+  }
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=name;a.hidden=true;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  return true;
+}
+function markBackedUp(){
+  document.querySelectorAll('.icon .dot').forEach(d=>d.remove());
+  const el=$('#bk-last');if(el)el.textContent=lastBackupText();
+}
+async function exportBackup(){
+  if(!state.expenses.length&&!hasBudget(state.budget)){toast('هنوز چیزی برای پشتیبان‌گیری نیست');return}
+  const ok=await saveFile('hazine-yar-backup-'+stampName()+'.json','application/json',backupText());
+  if(ok){ui.backedUp=Date.now();save();markBackedUp();toast('فایل پشتیبان آماده شد')}
+}
+
+/* Excel / Google Sheets: UTF-8 with BOM so Persian text opens correctly; "=+-@" at the start of a
+   text cell is neutralised so a note can never run as a spreadsheet formula. */
+function csvCell(v){
+  let s=String(v==null?'':v);
+  if(/^[=+\-@\t\r]/.test(s))s="'"+s;
+  return /[",\r\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function csvText(){
+  const rows=[['تاریخ (شمسی)','تاریخ (میلادی)','نوع','دسته','مبلغ (تومان)','توضیح']];
+  state.expenses.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.ts||0)-(b.ts||0)).forEach(x=>{
+    const j=gToJ(x.date);
+    rows.push([toFa(j.jy+'/'+pad2(j.jm)+'/'+pad2(j.jd)),x.date,x.type==='income'?'درآمد':'هزینه',(CAT[x.cat]||{n:''}).n,x.amount,x.note]);
+  });
+  return '﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n';
+}
+async function exportCSV(){
+  if(!state.expenses.length){toast('هنوز هزینه یا درآمدی ثبت نشده');return}
+  const ok=await saveFile('hazine-yar-'+stampName()+'.csv','text/csv',csvText());
+  if(ok)toast('فایل اکسل آماده شد');
+}
+
+/* Restore only adds what is missing; it never removes or overwrites anything already here. */
+function mergeBackup(text){
+  const d=JSON.parse(text);
+  const arr=Array.isArray(d)?d:(d&&d.expenses);
+  if(!Array.isArray(arr))throw new Error('format');
+  const have=new Set(state.expenses.map(x=>x.id));
+  let n=0;
+  arr.map(normalize).filter(Boolean).forEach(x=>{if(!have.has(x.id)){state.expenses.push(x);have.add(x.id);n++}});
+  let gotBudget=false;
+  if(!Array.isArray(d)&&d.budget&&!hasBudget(state.budget)){
+    const nb=normBudget(d.budget);
+    if(hasBudget(nb)){state.budget=nb;gotBudget=true}
+  }
+  return{n,gotBudget};
+}
+function restoreFrom(text){
+  try{
+    const r=mergeBackup(text);
+    closeSheets();save();render();
+    toast(r.n?toFa(r.n)+' مورد اضافه شد':r.gotBudget?'بودجه بازیابی شد':'مورد جدیدی پیدا نشد؛ همه از قبل بودند');
+  }catch(e){toast('این فایل یا متن، پشتیبان معتبر هزینه‌یار نیست')}
+}
+function readBackupFile(f){
+  if(!f)return;
+  if(f.size>20*1024*1024){toast('فایل خیلی بزرگ است');return}
+  const r=new FileReader();
+  r.onload=()=>restoreFrom(String(r.result));
+  r.onerror=()=>toast('فایل خوانده نشد');
+  r.readAsText(f);
+}
+async function copyBackup(){
+  const t=$('#bk');
+  try{await navigator.clipboard.writeText(t.value);toast('کپی شد')}
+  catch(e){t.select();try{document.execCommand('copy');toast('کپی شد')}catch(_){toast('متن را دستی انتخاب و کپی کن')}}
+}
+
 /* ---------- install as an app ---------- */
 let deferredInstall=null;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e});
@@ -709,45 +839,36 @@ window.addEventListener('appinstalled',()=>{deferredInstall=null});
 const isStandalone=()=>(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
 const canShowInstall=()=>/^https?:$/.test(location.protocol)&&!isStandalone();
 
+/* ---------- settings sheet ---------- */
 function openMenu(){
   const inst=canShowInstall();
+  const themeBtns=THEMES.map(t=>'<button data-a="theme" data-th="'+t[0]+'" class="'+(ui.theme===t[0]?'on':'')+'" aria-pressed="'+(ui.theme===t[0])+'">'+t[1]+'</button>').join('');
   $('#sheet-menu').innerHTML=
-    '<div class="s-head"><h2>'+(inst?'نصب و پشتیبان‌گیری':'پشتیبان‌گیری')+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    '<div class="s-head"><h2>تنظیمات</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    +'<div class="fl" style="margin-top:0">ظاهر برنامه</div>'
+    +'<div class="seg three" role="group" aria-label="ظاهر برنامه">'+themeBtns+'</div>'
     +(inst
-      ?'<div class="fl" style="margin-top:0">نصب روی گوشی</div>'
+      ?'<div class="fl" style="margin-top:4px">نصب روی گوشی</div>'
         +'<p class="note">آیفون: در Safari دکمهٔ اشتراک‌گذاری را بزن و «افزودن به صفحهٔ اصلی» (Add to Home Screen) را انتخاب کن. اندروید: از منوی Chrome گزینهٔ «نصب برنامه» یا «Add to Home screen» را بزن.</p>'
         +(deferredInstall?'<button class="btn soft" data-a="install">نصب برنامه</button>':'')
-        +'<div class="fl">پشتیبان‌گیری</div>'
       :'')
-    +'<p class="note">هزینه‌ها، درآمدها و بودجه در متن زیر هستند. آن را کپی کن و جایی نگه دار. هر وقت خواستی، متن را همین‌جا بچسبان و «بازیابی» را بزن.</p>'
-    +'<textarea id="bk" rows="7" spellcheck="false"></textarea>'
-    +'<div class="two"><button class="btn soft" data-a="copy">کپی متن</button><button class="btn soft" data-a="restore">بازیابی</button></div>'
-    +'<button class="btn soft" style="margin-top:8px" data-a="budget">'+(hasBudget(state.budget)?'تنظیم بودجهٔ ماهانه':'تعیین بودجهٔ ماهانه')+'</button>'
+    +'<div class="fl" style="margin-top:'+(inst?'18':'4')+'px">پشتیبان‌گیری</div>'
+    +'<p class="note" style="margin-bottom:6px">اطلاعاتت فقط روی همین دستگاه است. هر از گاهی یک فایل پشتیبان ذخیره کن (مثلاً در Files یا iCloud)، تا اگر داده‌های مرورگر پاک شد یا گوشی را عوض کردی، چیزی از دست نرود.</p>'
+    +'<p class="note" id="bk-last" style="font-weight:700;color:var(--ink)">'+lastBackupText()+'</p>'
+    +'<button class="btn primary" style="margin-top:0" data-a="export">ذخیرهٔ فایل پشتیبان</button>'
+    +'<div class="two"><button class="btn soft" data-a="import">بازیابی از فایل</button><button class="btn soft" data-a="csv">خروجی اکسل (CSV)</button></div>'
+    +'<p class="note" style="margin:10px 2px 0">«بازیابی» فقط موردهای جاافتاده را اضافه می‌کند و چیزی را پاک نمی‌کند.</p>'
+    +'<details class="fold" id="bk-fold"><summary>پشتیبان متنی (کپی و چسباندن)</summary>'
+      +'<p class="note">اگر ذخیرهٔ فایل برایت سخت بود: این متن را کپی کن و جایی نگه دار؛ بعد همین‌جا بچسبان و «بازیابی متن» را بزن.</p>'
+      +'<textarea id="bk" rows="6" spellcheck="false"></textarea>'
+      +'<div class="two"><button class="btn soft" data-a="copy">کپی متن</button><button class="btn soft" data-a="restore">بازیابی متن</button></div>'
+    +'</details>'
+    +'<div class="fl" style="margin-top:18px">دیگر</div>'
+    +'<button class="btn soft" data-a="budget">'+(hasBudget(state.budget)?'تنظیم بودجهٔ ماهانه':'تعیین بودجهٔ ماهانه')+'</button>'
     +'<button class="btn soft" style="margin-top:8px" data-a="welcome">دیدن معرفی برنامه</button>'
     +'<button class="btn danger" data-a="clear">حذف همهٔ هزینه‌ها و درآمدها</button>';
-  $('#bk').value=JSON.stringify({v:2,expenses:state.expenses,budget:state.budget});
+  $('#bk').value=backupText();
   $('#ov-menu').classList.add('open');
-}
-function restore(){
-  try{
-    const d=JSON.parse($('#bk').value);
-    const arr=Array.isArray(d)?d:d.expenses;
-    const have=new Set(state.expenses.map(x=>x.id));
-    let n=0;
-    arr.map(normalize).filter(Boolean).forEach(x=>{if(!have.has(x.id)){state.expenses.push(x);have.add(x.id);n++}});
-    let gotBudget=false;
-    if(!Array.isArray(d)&&d.budget&&!hasBudget(state.budget)){
-      const nb=normBudget(d.budget);
-      if(hasBudget(nb)){state.budget=nb;gotBudget=true}
-    }
-    closeSheets();save();render();
-    toast(n?toFa(n)+' مورد اضافه شد':gotBudget?'بودجه بازیابی شد':'مورد جدیدی پیدا نشد');
-  }catch(e){toast('متن پشتیبان معتبر نیست')}
-}
-async function copyBackup(){
-  const t=$('#bk');
-  try{await navigator.clipboard.writeText(t.value);toast('کپی شد')}
-  catch(e){t.select();try{document.execCommand('copy');toast('کپی شد')}catch(_){toast('متن را دستی انتخاب و کپی کن')}}
 }
 
 /* ---------- welcome screen ---------- */
@@ -863,7 +984,14 @@ document.addEventListener('click',e=>{
       break;
     case 'close':closeSheets();break;
     case 'copy':copyBackup();break;
-    case 'restore':restore();break;
+    case 'restore':restoreFrom($('#bk').value);break;
+    case 'export':exportBackup();break;
+    case 'csv':exportCSV();break;
+    case 'import':$('#bk-file').click();break;
+    case 'theme':
+      ui.theme=el.dataset.th;applyTheme();save();
+      document.querySelectorAll('#sheet-menu [data-a="theme"]').forEach(b=>{const on=b.dataset.th===ui.theme;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
+      break;
     case 'clear':
       if(confirmTwice(el,'برای حذف همه، دوباره لمس کن')){
         state.expenses=[];closeSheets();save();render();toast('همهٔ هزینه‌ها و درآمدها حذف شد');
@@ -881,7 +1009,10 @@ document.addEventListener('input',e=>{
     e.target.value=n?fmt(+n):'';
   }
 });
-document.addEventListener('change',e=>{if(e.target.id==='f-m'||e.target.id==='f-y')refreshDays()});
+document.addEventListener('change',e=>{
+  if(e.target.id==='f-m'||e.target.id==='f-y')refreshDays();
+  if(e.target.id==='bk-file'){const f=e.target.files&&e.target.files[0];e.target.value='';readBackupFile(f)}
+});
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(welcomeOpen())closeWelcome();else closeSheets()}
   if(e.key==='Enter'&&e.target.id==='f-note')doSave();
