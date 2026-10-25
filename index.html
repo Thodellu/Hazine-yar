@@ -269,6 +269,19 @@ details.fold[open] summary::after{content:"−"}
 .kv b.due.soon{color:var(--warn)}
 .kv b.due.late{color:var(--madder)}
 
+/* search, recurring, ledger links */
+.hbs{display:flex;gap:8px}
+.rep{font-size:12px;margin-inline-start:6px}
+.chk{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:14px;font-weight:600;cursor:pointer}
+.chk input{width:20px;height:20px;accent-color:var(--turq);flex:none;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips .chip,#f-rep .chip{padding:5px 12px}
+.chip .e{margin-inline-end:4px}
+#f-rep{flex-wrap:wrap}
+.inp[type=search]{-webkit-appearance:none;appearance:none}
+.qsum{margin:16px 2px 2px;font-size:13px;color:var(--muted);font-weight:600;min-height:20px}
+.hrow .d small{display:block;font-size:11.5px;color:var(--turq-ink);font-weight:600}
+
 /* welcome screen */
 .welcome{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;overflow:auto;color:#fff;
   background:radial-gradient(130% 55% at 50% 20%,#2a3d94 0%,#18246a 62%);
@@ -324,11 +337,13 @@ details.fold[open] summary::after{content:"−"}
 <body>
 <div class="app" id="root"></div>
 
+<div class="overlay" id="ov-search"><div class="sheet" id="sheet-search" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-add"><div class="sheet" id="sheet-add" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-menu"><div class="sheet" id="sheet-menu" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-budget"><div class="sheet" id="sheet-budget" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-debt"><div class="sheet" id="sheet-debt" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-goal"><div class="sheet" id="sheet-goal" role="dialog" aria-modal="true"></div></div>
+<div class="overlay" id="ov-rec"><div class="sheet" id="sheet-rec" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="bk-file" accept=".json,application/json,text/plain" hidden>
 <div class="toast" id="toast" role="status"></div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="w-t" tabindex="-1"></div>
@@ -431,24 +446,28 @@ const ICATS=[
   {id:'refund',n:'بازگشت پول',e:'↩️',c:'#7b61d9'},
   {id:'in_other',n:'سایر',e:'💰',c:'#8a93a8'}
 ];
-const CAT=Object.fromEntries(CATS.concat(ICATS).map(c=>[c.id,c]));
+/* not shown in the category grid: used for entries created from a debt payment */
+const SYSC=[{id:'debt',n:'بدهی و قسط',e:'💳',c:'#a0522d'}];
+const CAT=Object.fromEntries(CATS.concat(ICATS,SYSC).map(c=>[c.id,c]));
 const catsOf=t=>t==='income'?ICATS:CATS;
 const MODES=[['day','روزانه'],['week','هفتگی'],['month','ماهانه'],['year','سالانه']];
 const KEY='hazine-yar:v1';
 
 /* state.expenses holds both expenses and incomes (field "type"); old data without it counts as expense */
-const state={expenses:[],budget:{total:0,cats:{}},debts:[],goals:[]};
-const ui={mode:'month',anchor:todayISO(),first:true,seen:false,theme:'auto',backedUp:0,view:'spend'};
+const state={expenses:[],budget:{total:0,cats:{}},debts:[],goals:[],recurs:[]};
+const ui={mode:'month',anchor:todayISO(),first:true,seen:false,theme:'auto',backedUp:0,view:'spend',linkDebt:true,linkBuy:true,q:{text:'',type:'all',cat:'',scope:'all'}};
 let storageOK=false, editing=null, formCat='food', formType='expense';
-let curDebt=null, curGoal=null, debtEditing=null, goalEditing=null;
+let curDebt=null, curGoal=null, debtEditing=null, goalEditing=null, curRec=null, recCat='', formRep='none';
 const dForm={dir:'owe'}, gForm={emoji:'🎯'};
 try{const t0=window.localStorage.getItem('hazine-yar:theme');if(t0==='light'||t0==='dark')ui.theme=t0}catch(e){/* no storage: stays auto */}
 
 const normalize=x=>{
   if(!x||typeof x.amount!=='number'||!(x.amount>0)||!/^\d{4}-\d{2}-\d{2}$/.test(x.date||''))return null;
   const type=x.type==='income'?'income':'expense';
-  const known=catsOf(type).some(c=>c.id===x.cat);
-  return{id:String(x.id||uid()),type,amount:Math.round(x.amount),cat:known?x.cat:(type==='income'?'in_other':'other'),note:String(x.note||'').slice(0,80),date:x.date,ts:x.ts||Date.now()};
+  const known=catsOf(type).concat(type==='expense'?SYSC:[]).some(c=>c.id===x.cat);
+  const o={id:String(x.id||uid()),type,amount:Math.round(x.amount),cat:known?x.cat:(type==='income'?'in_other':'other'),note:String(x.note||'').slice(0,80),date:x.date,ts:x.ts||Date.now()};
+  if(x.rid)o.rid=String(x.rid);
+  return o;
 };
 const normBudget=b=>{
   const out={total:0,cats:{}};
@@ -486,6 +505,8 @@ async function load(){
       state.budget=normBudget(d.budget);
       state.debts=Array.isArray(d.debts)?d.debts.map(normDebt).filter(Boolean):[];
       state.goals=Array.isArray(d.goals)?d.goals.map(normGoal).filter(Boolean):[];
+      state.recurs=Array.isArray(d.recurs)?d.recurs.map(normRec).filter(Boolean):[];
+      ui.linkDebt=!(d.link&&d.link.debt===false);ui.linkBuy=!(d.link&&d.link.buy===false);
       if(THEMES.some(t=>t[0]===d.theme))ui.theme=d.theme;
       ui.backedUp=(typeof d.backedUp==='number'&&d.backedUp>0)?d.backedUp:0;
     }
@@ -493,7 +514,7 @@ async function load(){
   applyTheme();
 }
 async function save(){
-  try{await writeRaw(JSON.stringify({expenses:state.expenses,budget:state.budget,debts:state.debts,goals:state.goals,mode:ui.mode,seen:ui.seen,theme:ui.theme,backedUp:ui.backedUp}))}
+  try{await writeRaw(JSON.stringify({expenses:state.expenses,budget:state.budget,debts:state.debts,goals:state.goals,recurs:state.recurs,link:{debt:ui.linkDebt,buy:ui.linkBuy},mode:ui.mode,seen:ui.seen,theme:ui.theme,backedUp:ui.backedUp}))}
   catch(e){storageOK=false}
 }
 
@@ -548,6 +569,7 @@ const I={
   next:svg('<path d="M15 6l-6 6 6 6"/>',20),
   close:svg('<path d="M6 6l12 12M18 6L6 18"/>',20),
   more:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  search:svg('<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',20),
   star:(w)=>svg('<rect x="6" y="6" width="12" height="12" rx=".5"/><rect x="6" y="6" width="12" height="12" rx=".5" transform="rotate(45 12 12)"/>',w||22,1.6)
 };
 const TILE='<svg class="tile" aria-hidden="true"><defs><pattern id="girih" width="40" height="40" patternUnits="userSpaceOnUse"><g fill="none" stroke="currentColor" stroke-width="1.2"><rect x="8" y="8" width="24" height="24"/><rect x="8" y="8" width="24" height="24" transform="rotate(45 20 20)"/><circle cx="20" cy="20" r="4"/></g></pattern></defs><rect width="100%" height="100%" fill="url(#girih)"/></svg>';
@@ -678,9 +700,9 @@ function render(){
     // categories
     if(cats.length)body+='<section class="sec"><div class="sec-h"><h2>هزینه به تفکیک دسته</h2><span>'+toFa(cats.length)+' دسته</span></div><div class="panel pad">'
       +'<div class="stack">'+cats.map(c=>'<i style="flex:'+c.sum+';background:'+c.c.c+'"></i>').join('')+'</div>'
-      +cats.map(c=>'<div class="row"><div class="ico" style="background:'+hexA(c.c.c,.16)+'">'+c.c.e+'</div>'
+      +cats.map(c=>'<button class="row" data-a="cat-filter" data-c="'+c.c.id+'"><div class="ico" style="background:'+hexA(c.c.c,.16)+'">'+c.c.e+'</div>'
         +'<div class="mid"><div class="name">'+c.c.n+'</div><div class="sub">'+toFa(c.n)+' هزینه</div></div>'
-        +'<div class="amt">'+fmt(c.sum)+'<em>تومان</em><small>'+toFa(Math.round(c.sum/total*100))+'٪</small></div></div>').join('')
+        +'<div class="amt">'+fmt(c.sum)+'<em>تومان</em><small>'+toFa(Math.round(c.sum/total*100))+'٪</small></div></button>').join('')
       +'</div></section>';
     // ledger
     const sorted=list.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
@@ -690,10 +712,7 @@ function render(){
       +groups.map(g=>{
         const sum=sumOf(spentOf(g.items));
         return '<div class="day"><div class="day-h"><span>'+dayName(g.date,today)+'</span><b>'+(sum?fmt(sum)+' تومان':'')+'</b></div><div class="panel">'
-          +g.items.map(x=>{const c=CAT[x.cat],inc=x.type==='income';
-            return '<button class="row" data-a="edit" data-id="'+x.id+'"><div class="ico" style="background:'+hexA(c.c,.16)+'">'+c.e+'</div>'
-              +'<div class="mid"><div class="name">'+(x.note?esc(x.note):c.n)+'</div>'+(x.note?'<div class="sub">'+c.n+'</div>':(inc?'<div class="sub">درآمد</div>':''))+'</div>'
-              +'<div class="amt'+(inc?' pos':'')+'">'+(inc?'<bdi dir="ltr">+'+fmt(x.amount)+'</bdi>':fmt(x.amount))+'<em>تومان</em></div></button>';}).join('')
+          +g.items.map(rowHTML).join('')
           +'</div></div>';
       }).join('')+'</section>';
   }
@@ -735,7 +754,7 @@ function openAdd(id){
   editing=id?state.expenses.find(x=>x.id===id):null;
   const e=editing||{type:'expense',amount:0,cat:'food',note:'',date:ui.mode==='day'?ui.anchor:todayISO()};
   formType=e.type==='income'?'income':'expense';
-  formCat=e.cat;
+  formCat=e.cat;formRep='none';
   const T=T_TEXT[formType];
   $('#sheet-add').innerHTML=
     '<div class="s-head"><h2 id="f-title">'+(editing?T.edit:T.title)+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
@@ -745,6 +764,10 @@ function openAdd(id){
     +'<div class="fl">توضیح</div><input id="f-note" class="inp" maxlength="80" placeholder="'+T.ph+'" value="'+esc(e.note)+'">'
     +'<div class="fl">تاریخ</div>'+dateFields(e.date)
     +'<div class="quick"><button class="chip" data-a="quick" data-q="0">امروز</button><button class="chip" data-a="quick" data-q="-1">دیروز</button></div>'
+    +(editing
+      ?(e.rid?'<p class="note" style="margin:14px 2px 0">این مورد از یک تکرار خودکار ساخته شده؛ تغییر اینجا فقط همین مورد را عوض می‌کند. تکرار را از «تنظیمات ← تراکنش‌های تکرارشونده» مدیریت کن.</p>':'')
+      :'<div class="fl">تکرار</div><div class="quick" style="margin-top:0" id="f-rep">'+[['none','بدون تکرار'],['week','هر هفته'],['month','هر ماه'],['year','هر سال']].map(v=>'<button class="chip'+(v[0]==='none'?' on':'')+'" data-a="rep" data-v="'+v[0]+'">'+v[1]+'</button>').join('')+'</div>'
+        +'<div id="f-repx" hidden><div class="fl">پایان تکرار</div>'+optDate('re','','بدون پایان','تا تاریخ')+'<p class="note" style="margin:10px 2px 0">اگر تاریخ بالا گذشته باشد، موردهای گذشته هم همین حالا ثبت می‌شوند.</p></div>')
     +'<button class="btn primary" id="f-save" data-a="save">'+(editing?'ذخیره تغییرات':T.save)+'</button>'
     +(editing?'<button class="btn danger" data-a="del">'+T.del+'</button>':'');
   $('#ov-add').classList.add('open');
@@ -758,17 +781,27 @@ function setType(t){
   document.querySelectorAll('#sheet-add .seg button').forEach(b=>{const on=b.dataset.t===t;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
 }
 function doSave(){
-  const amount=+toEn($('#f-amount').value).replace(/\D/g,'')||0;
+  const amount=digits('f-amount');
   if(!amount){toast('مبلغ را وارد کن');$('#f-amount').focus();return}
-  const date=jToG(+$('#f-y').value,+$('#f-m').value,+$('#f-d').value);
+  const date=readDate('f');
   const note=$('#f-note').value.trim().slice(0,80);
   const wasEdit=!!editing;
+  if(!editing&&formRep!=='none'){
+    const end=readOptDate('re');
+    if(end&&end<date){toast('پایان تکرار باید بعد از شروع باشد');return}
+    state.recurs.push({id:uid(),type:formType,amount,cat:formCat,note,freq:formRep,start:date,end,n:0,paused:false,ts:Date.now()});
+    const made=applyRecurring();
+    if(made===1&&date<=todayISO()){const r=range(ui.mode,ui.anchor);if(date<r.s||date>r.e)ui.anchor=date}
+    afterEntryChange();
+    toast(made>1?toFa(made)+' مورد ثبت شد و تکرار فعال است':made===1?'ثبت شد؛ '+FREQ[formRep]+' تکرار می‌شود':'تکرار تنظیم شد؛ اولین مورد '+dm(date)+' ثبت می‌شود');
+    return;
+  }
   if(editing)Object.assign(editing,{amount,cat:formCat,note,date});
   else state.expenses.push({id:uid(),type:formType,amount:amount,cat:formCat,note:note,date:date,ts:Date.now()});
   const r=range(ui.mode,ui.anchor);
   if(date<r.s||date>r.e)ui.anchor=date;
   const doneMsg=T_TEXT[formType].done;
-  closeSheets();save();render();
+  afterEntryChange();
   toast(wasEdit?'تغییرات ذخیره شد':doneMsg);
 }
 
@@ -806,7 +839,7 @@ const DIRS={
 const GOAL_EMOJI=['🎯','📱','💻','🚗','🏠','✈️','💍','🎓','🛋️','📷','🎮','👟'];
 const dateRe=/^\d{4}-\d{2}-\d{2}$/;
 const posInt=v=>(typeof v==='number'&&isFinite(v)&&v>0)?Math.round(v):0;
-const normPays=a=>Array.isArray(a)?a.map(p=>(p&&posInt(p.amount)&&dateRe.test(p.date||''))?{id:String(p.id||uid()),amount:posInt(p.amount),date:p.date,ts:p.ts||Date.now()}:null).filter(Boolean):[];
+const normPays=a=>Array.isArray(a)?a.map(p=>(p&&posInt(p.amount)&&dateRe.test(p.date||''))?{id:String(p.id||uid()),amount:posInt(p.amount),date:p.date,ts:p.ts||Date.now(),eid:p.eid?String(p.eid):''}:null).filter(Boolean):[];
 const normSaves=a=>Array.isArray(a)?a.map(s=>(s&&typeof s.amount==='number'&&isFinite(s.amount)&&Math.round(s.amount)!==0&&dateRe.test(s.date||''))?{id:String(s.id||uid()),amount:Math.round(s.amount),date:s.date,ts:s.ts||Date.now()}:null).filter(Boolean):[];
 const normDebt=x=>{
   if(!x||!posInt(x.amount))return null;
@@ -817,7 +850,7 @@ const normDebt=x=>{
 const normGoal=x=>{
   if(!x||!posInt(x.target))return null;
   return{id:String(x.id||uid()),name:String(x.name||'').trim().slice(0,40)||'هدف من',emoji:GOAL_EMOJI.indexOf(x.emoji)>=0?x.emoji:'🎯',target:posInt(x.target),
-    due:dateRe.test(x.due||'')?x.due:'',saves:normSaves(x.saves),doneOn:dateRe.test(x.doneOn||'')?x.doneOn:'',ts:x.ts||Date.now()};
+    due:dateRe.test(x.due||'')?x.due:'',saves:normSaves(x.saves),doneOn:dateRe.test(x.doneOn||'')?x.doneOn:'',buyEid:x.buyEid?String(x.buyEid):'',ts:x.ts||Date.now()};
 };
 const paidOf=d=>d.pays.reduce((a,p)=>a+p.amount,0);
 const remOf=d=>Math.max(0,d.amount-paidOf(d));
@@ -840,7 +873,8 @@ const VIEWS=[['spend','هزینه‌ها'],['debt','بدهی‌ها'],['goal','�
 function headerHTML(){
   const today=todayISO(),todayJ=gToJ(today);
   return '<header class="top"><div class="brand"><div class="mark">'+I.star(24)+'</div><div><h1>هزینه‌یار</h1><p>امروز '+WD[wIdx(today)]+' '+toFa(todayJ.jd)+' '+JM[todayJ.jm-1]+' '+toFa(todayJ.jy)+'</p></div></div>'
-    +'<button class="icon" data-a="menu" aria-label="تنظیمات و پشتیبان‌گیری">'+I.more+(needsBackup()?'<span class="dot" aria-hidden="true"></span>':'')+'</button></header>';
+    +'<div class="hbs">'+(ui.view==='spend'?'<button class="icon" data-a="search" aria-label="جست‌وجو">'+I.search+'</button>':'')
+    +'<button class="icon" data-a="menu" aria-label="تنظیمات و پشتیبان‌گیری">'+I.more+(needsBackup()?'<span class="dot" aria-hidden="true"></span>':'')+'</button></div></header>';
 }
 function viewSwitch(){
   const al=debtAlerts();
@@ -956,11 +990,13 @@ function openDebtDetail(id){
       +'<div class="amount"><input id="p-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ" value=""><span>تومان</span></div>'
       +'<div class="quick"><button class="chip" data-a="pay-all">همهٔ مانده ('+fmt(rem)+')</button></div>'
       +'<div class="fl">تاریخ</div>'+dateFields(today,'p')
+      +'<label class="chk"><input type="checkbox" id="p-link"'+(ui.linkDebt?' checked':'')+'> '+(d.dir==='owe'?'هم‌زمان در هزینه‌ها ثبت شود':'هم‌زمان در درآمدها ثبت شود')+'</label>'
       +'<button class="btn primary" data-a="pay-add">'+D.btn+'</button>')
-    +(pays.length?'<div class="fl">سابقه</div><div class="panel">'+pays.map(p=>'<div class="hrow"><span class="d">'+dayName(p.date,today)+'</span><b class="'+(d.dir==='owed'?'pos':'')+'">'+fmt(p.amount)+' تومان</b>'
+    +(pays.length?'<div class="fl">سابقه</div><div class="panel">'+pays.map(p=>'<div class="hrow"><span class="d">'+dayName(p.date,today)+(p.eid&&state.expenses.some(x=>x.id===p.eid)?'<small>در دفتر ثبت شده</small>':'')+'</span><b class="'+(d.dir==='owed'?'pos':'')+'">'+fmt(p.amount)+' تومان</b>'
         +'<button class="linkbtn dng" data-a="pay-del" data-id="'+p.id+'">حذف</button></div>').join('')+'</div>':'')
     +'<button class="btn soft" style="margin-top:18px" data-a="debt-edit">ویرایش</button>'
-    +'<button class="btn danger" data-a="debt-del">حذف</button>';
+    +'<button class="btn danger" data-a="debt-del">حذف</button>'
+    +(pays.some(p=>p.eid)?'<p class="note" style="margin:6px 2px 0">با حذف این مورد، ثبت‌های مربوط در فهرست هزینه‌ها و درآمدها می‌مانند.</p>':'');
   $('#ov-debt').classList.add('open');
 }
 function addPay(){
@@ -968,7 +1004,13 @@ function addPay(){
   const amount=digits('p-amount'),rem=remOf(d);
   if(!amount){toast('مبلغ را وارد کن');$('#p-amount').focus();return}
   if(amount>rem){toast('بیشتر از مانده است ('+fmt(rem)+' تومان)');return}
-  d.pays.push({id:uid(),amount,date:readDate('p'),ts:Date.now()});
+  const date=readDate('p'),link=$('#p-link')?$('#p-link').checked:false,pay={id:uid(),amount,date,ts:Date.now(),eid:''};
+  ui.linkDebt=link;
+  if(link){
+    const inc=d.dir==='owed',e={id:uid(),type:inc?'income':'expense',amount,cat:inc?'refund':'debt',note:(inc?'دریافت از ':'پرداخت ')+d.name,date,ts:Date.now()};
+    state.expenses.push(e);pay.eid=e.id;
+  }
+  d.pays.push(pay);
   const settled=remOf(d)===0;
   save();render();openDebtDetail(d.id);$('#sheet-debt').scrollTop=0;
   toast(settled?'تسویه شد 🎉':DIRS[d.dir].pdone);
@@ -1097,17 +1139,187 @@ function mergeList(list,incoming,norm,sub){
   (Array.isArray(incoming)?incoming:[]).map(norm).filter(Boolean).forEach(x=>{
     const ex=byId.get(x.id);
     if(!ex){list.push(x);byId.set(x.id,x);n++;return}
+    if(!sub)return;
     const have=new Set(ex[sub].map(q=>q.id));
     x[sub].forEach(q=>{if(!have.has(q.id)){ex[sub].push(q);have.add(q.id);n++}});
   });
   return n;
 }
 
+/* ---------- ledger helpers (shared by the list, search and edit sheets) ---------- */
+function rowHTML(x){
+  const c=CAT[x.cat]||CAT.other,inc=x.type==='income';
+  return '<button class="row" data-a="edit" data-id="'+x.id+'"><div class="ico" style="background:'+hexA(c.c,.16)+'">'+c.e+'</div>'
+    +'<div class="mid"><div class="name">'+(x.note?esc(x.note):c.n)+(x.rid?'<span class="rep" title="تکراری">🔁</span>':'')+'</div>'+(x.note?'<div class="sub">'+c.n+'</div>':(inc?'<div class="sub">درآمد</div>':''))+'</div>'
+    +'<div class="amt'+(inc?' pos':'')+'">'+(inc?'<bdi dir="ltr">+'+fmt(x.amount)+'</bdi>':fmt(x.amount))+'<em>تومان</em></div></button>';
+}
+const searchOpen=()=>$('#ov-search').classList.contains('open');
+function closeAdd(){$('#ov-add').classList.remove('open');editing=null;if(searchOpen())renderResults()}
+/* the add/edit sheet can sit on top of the search sheet: close only itself then */
+function afterEntryChange(){save();render();if(searchOpen())closeAdd();else closeSheets()}
+function closeTop(){if($('#ov-add').classList.contains('open')&&searchOpen())closeAdd();else closeSheets()}
+
+/* ---------- recurring transactions ---------- */
+const FREQ={week:'هر هفته',month:'هر ماه',year:'هر سال'};
+const normRec=x=>{
+  if(!x||!posInt(x.amount)||!dateRe.test(x.start||''))return null;
+  const type=x.type==='income'?'income':'expense';
+  const known=catsOf(type).some(c=>c.id===x.cat);
+  return{id:String(x.id||uid()),type,amount:posInt(x.amount),cat:known?x.cat:(type==='income'?'in_other':'other'),note:String(x.note||'').slice(0,80),
+    freq:FREQ[x.freq]?x.freq:'month',start:x.start,end:dateRe.test(x.end||'')?x.end:'',n:Math.max(0,Math.min(5000,Math.floor(+x.n||0))),paused:!!x.paused,ts:x.ts||Date.now()};
+};
+/* the n-th occurrence (0 = the start date): weekly = +7 days, monthly = same Persian day each month (clamped to month length), yearly = same Persian month and day */
+function recDate(r,n){
+  if(r.freq==='week')return addDays(r.start,7*n);
+  const j=gToJ(r.start);
+  if(r.freq==='month'){const m=j.jm-1+n,y=j.jy+Math.floor(m/12),mm=m%12+1;return jToG(y,mm,Math.min(j.jd,jLen(y,mm)))}
+  const y=j.jy+n;return jToG(y,j.jm,Math.min(j.jd,jLen(y,j.jm)));
+}
+const recNext=r=>recDate(r,r.n);
+const recEnded=r=>!!r.end&&recNext(r)>r.end;
+/* writes every occurrence that has come due into the ledger (once: the counter n only moves forward, and ids are deterministic) */
+function applyRecurring(){
+  const today=todayISO(),have=new Set(state.expenses.map(x=>x.id));let made=0;
+  state.recurs.forEach(r=>{
+    if(r.paused)return;
+    let guard=0;
+    while(guard++<500){
+      const d=recDate(r,r.n);
+      if(d>today||(r.end&&d>r.end))break;
+      const id='r-'+r.id+'-'+r.n;
+      if(!have.has(id)){state.expenses.push({id,type:r.type,amount:r.amount,cat:r.cat,note:r.note,date:d,ts:Date.now(),rid:r.id});have.add(id);made++}
+      r.n++;
+    }
+  });
+  return made;
+}
+const fullDate=s=>dm(s)+' '+toFa(gToJ(s).jy);
+function recRow(r){
+  const c=CAT[r.cat],inc=r.type==='income',off=r.paused||recEnded(r);
+  const st=r.paused?'متوقف':recEnded(r)?'پایان‌یافته':'بعدی: '+dm(recNext(r));
+  return '<button class="row'+(off?' done':'')+'" data-a="rec-open" data-id="'+r.id+'"><div class="ico" style="background:'+hexA(c.c,.16)+'">'+c.e+'</div>'
+    +'<div class="mid"><div class="name">'+(r.note?esc(r.note):c.n)+'</div><div class="sub">'+FREQ[r.freq]+'، '+st+'</div></div>'
+    +'<div class="amt'+(inc?' pos':'')+'">'+(inc?'<bdi dir="ltr">+'+fmt(r.amount)+'</bdi>':fmt(r.amount))+'<em>تومان</em></div></button>';
+}
+const sheetHead=t=>'<div class="s-head"><h2>'+t+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>';
+function openRecList(){
+  curRec=null;
+  const list=state.recurs.slice().sort((a,b)=>recNext(a).localeCompare(recNext(b)));
+  $('#sheet-rec').innerHTML=sheetHead('تراکنش‌های تکرارشونده')
+    +(list.length
+      ?'<div class="panel">'+list.map(recRow).join('')+'</div><p class="note" style="margin-top:12px">هر بار که برنامه را باز می‌کنی، موردهایی که تاریخشان رسیده خودکار در فهرست ثبت می‌شوند.</p>'
+      :'<div class="empty" style="padding-top:20px">'+I.star(40)+'<b>تراکنش تکرارشونده‌ای نداری</b>موقع ثبت یک هزینه یا درآمد، گزینهٔ «تکرار» را انتخاب کن؛ مثلاً برای اجاره، قسط یا حقوق.</div>');
+  $('#ov-rec').classList.add('open');
+}
+const recCats=(type,sel)=>catsOf(type).map(c=>'<button class="cat'+(c.id===sel?' on':'')+'" data-a="rcat" data-c="'+c.id+'"><span class="e">'+c.e+'</span>'+c.n+'</button>').join('');
+function openRecEdit(id){
+  const r=state.recurs.find(x=>x.id===id);if(!r)return;
+  curRec=id;recCat=r.cat;
+  const ended=recEnded(r);
+  $('#sheet-rec').innerHTML=sheetHead('ویرایش تکرار')
+    +'<button class="linkbtn" data-a="rec-back" style="margin-bottom:6px">بازگشت به فهرست</button>'
+    +'<div class="kv"><span>تکرار</span><b>'+FREQ[r.freq]+'</b></div>'
+    +'<div class="kv"><span>شروع</span><b>'+fullDate(r.start)+'</b></div>'
+    +(r.end?'<div class="kv"><span>پایان</span><b>'+fullDate(r.end)+'</b></div>':'')
+    +'<div class="kv"><span>مورد بعدی</span><b>'+(r.paused?'متوقف':ended?'پایان‌یافته':fullDate(recNext(r)))+'</b></div>'
+    +'<div class="fl">مبلغ</div><div class="amount"><input id="r-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ" value="'+fmt(r.amount)+'"><span>تومان</span></div>'
+    +'<div class="fl">'+(r.type==='income'?'منبع':'دسته')+'</div><div class="cats" id="r-cats">'+recCats(r.type,r.cat)+'</div>'
+    +'<div class="fl">توضیح</div><input id="r-note" class="inp" maxlength="80" value="'+esc(r.note)+'">'
+    +'<button class="btn primary" data-a="rec-save">ذخیرهٔ تغییرات</button>'
+    +(ended?'':'<button class="btn soft" style="margin-top:10px" data-a="rec-pause">'+(r.paused?'ادامهٔ تکرار':'توقف تکرار')+'</button>')
+    +'<button class="btn danger" data-a="rec-del">حذف تکرار</button>'
+    +'<p class="note" style="margin-top:10px">تغییر یا حذف تکرار روی موردهایی که قبلاً ثبت شده اثری ندارد.</p>';
+}
+function saveRec(){
+  const r=state.recurs.find(x=>x.id===curRec);if(!r)return;
+  const amount=digits('r-amount');
+  if(!amount){toast('مبلغ را وارد کن');return}
+  Object.assign(r,{amount,cat:recCat,note:$('#r-note').value.trim().slice(0,80)});
+  save();openRecList();toast('تغییرات ذخیره شد');
+}
+function toggleRec(){
+  const r=state.recurs.find(x=>x.id===curRec);if(!r)return;
+  r.paused=!r.paused;
+  if(!r.paused){const t=todayISO();let g=0;while(recDate(r,r.n)<t&&g++<5000)r.n++;applyRecurring()}  // resume from today, no catch-up for the paused time
+  save();render();openRecList();toast(r.paused?'تکرار متوقف شد':'تکرار ادامه پیدا کرد');
+}
+
+/* ---------- search and filters ---------- */
+const normQ=s=>toEn(String(s==null?'':s)).replace(/ي/g,'ی').replace(/ك/g,'ک').replace(/[‌‏ً-ٟ]/g,'').toLowerCase().trim();
+function filterEntries(){
+  const q=ui.q,tx=normQ(q.text),r=range(ui.mode,ui.anchor),qd=tx.replace(/[\s٬,،]/g,''),isNum=/^\d{2,}$/.test(qd);
+  return state.expenses.filter(x=>{
+    if(q.type!=='all'&&x.type!==q.type)return false;
+    if(q.cat&&x.cat!==q.cat)return false;
+    if(q.scope==='range'&&(x.date<r.s||x.date>r.e))return false;
+    if(tx){
+      const c=CAT[x.cat];
+      if(!normQ(x.note+' '+(c?c.n:'')).includes(tx)&&!(isNum&&String(x.amount).includes(qd)))return false;
+    }
+    return true;
+  }).sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
+}
+const qCatList=()=>ui.q.type==='income'?ICATS:ui.q.type==='expense'?CATS.concat(SYSC):CATS.concat(SYSC,ICATS);
+function paintQ(){
+  const q=ui.q;
+  if(q.cat&&!qCatList().some(c=>c.id===q.cat))q.cat='';
+  const chip=(on,a,k,v,t)=>'<button class="chip'+(on?' on':'')+'" data-a="'+a+'" data-'+k+'="'+v+'" aria-pressed="'+on+'">'+t+'</button>';
+  $('#q-types').innerHTML=[['all','همه'],['expense','هزینه'],['income','درآمد']].map(t=>chip(q.type===t[0],'q-type','v',t[0],t[1])).join('');
+  $('#q-cats').innerHTML=qCatList().map(c=>chip(q.cat===c.id,'q-cat','c',c.id,'<span class="e">'+c.e+'</span>'+c.n)).join('');
+  $('#q-scope').innerHTML=chip(q.scope==='range','q-scope','v','range','فقط '+periodLabel(ui.mode,range(ui.mode,ui.anchor)))+chip(q.scope==='all','q-scope','v','all','همهٔ زمان‌ها');
+}
+function renderResults(){
+  const list=filterEntries(),today=todayISO(),spend=sumOf(spentOf(list)),inc=sumOf(list.filter(x=>x.type==='income')),CAP=150;
+  $('#q-sum').textContent=list.length?toFa(list.length)+' مورد'+(spend?'؛ هزینه '+fmt(spend)+' تومان':'')+(inc?'؛ درآمد '+fmt(inc)+' تومان':''):'';
+  const groups=[];
+  list.slice(0,CAP).forEach(x=>{const g=groups[groups.length-1];if(g&&g.date===x.date)g.items.push(x);else groups.push({date:x.date,items:[x]})});
+  $('#q-res').innerHTML=list.length
+    ?groups.map(g=>'<div class="day"><div class="day-h"><span>'+dayName(g.date,today)+'</span><b>'+(sumOf(spentOf(g.items))?fmt(sumOf(spentOf(g.items)))+' تومان':'')+'</b></div><div class="panel">'+g.items.map(rowHTML).join('')+'</div></div>').join('')
+      +(list.length>CAP?'<p class="note" style="margin-top:12px">فقط '+toFa(CAP)+' موردِ اول نمایش داده شد؛ جست‌وجو را دقیق‌تر کن.</p>':'')
+    :'<div class="empty" style="padding:26px 10px 4px"><b>چیزی پیدا نشد</b>عبارت یا فیلترها را عوض کن.</div>';
+}
+function openSearch(preset){
+  ui.q=Object.assign({text:'',type:'all',cat:'',scope:'all'},preset||{});
+  $('#sheet-search').innerHTML=sheetHead('جست‌وجو')
+    +'<input id="q-in" class="inp" type="search" enterkeyhint="search" autocomplete="off" aria-label="جست‌وجو" placeholder="توضیح، دسته یا مبلغ" value="'+esc(ui.q.text)+'">'
+    +'<div class="fl">نوع</div><div class="chips" id="q-types"></div>'
+    +'<div class="fl">دسته</div><div class="chips" id="q-cats"></div>'
+    +'<div class="fl">بازه</div><div class="chips" id="q-scope"></div>'
+    +'<div class="qsum" id="q-sum" aria-live="polite"></div><div id="q-res"></div>';
+  paintQ();renderResults();
+  $('#ov-search').classList.add('open');
+  if(!preset)setTimeout(()=>{const f=$('#q-in');if(f)f.focus()},320);
+}
+document.addEventListener('input',e=>{if(e.target.id==='q-in'){ui.q.text=e.target.value;renderResults()}});
+
+/* ---------- debts and goals: record in the ledger too ---------- */
+function openGoalBuy(){
+  const g=state.goals.find(x=>x.id===curGoal);if(!g)return;
+  const saved=savedOf(g);
+  $('#sheet-goal').innerHTML=sheetHead('خرید '+g.emoji+' '+esc(g.name))
+    +'<p class="note">مبلغی را که واقعاً پرداخت کردی و تاریخ خرید را تأیید کن.</p>'
+    +'<div class="fl" style="margin-top:0">مبلغ خرید</div><div class="amount"><input id="b2-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ خرید" value="'+fmt(saved>0?saved:g.target)+'"><span>تومان</span></div>'
+    +'<div class="fl">تاریخ خرید</div>'+dateFields(todayISO(),'bd')
+    +'<label class="chk"><input type="checkbox" id="b2-link"'+(ui.linkBuy?' checked':'')+'> در هزینه‌ها هم ثبت شود (دستهٔ «خرید»)</label>'
+    +'<button class="btn primary" data-a="buy-ok">تأیید خرید 🎉</button>'
+    +'<button class="btn soft" style="margin-top:10px" data-a="buy-back">بازگشت</button>';
+  $('#ov-goal').classList.add('open');
+}
+function confirmBuy(){
+  const g=state.goals.find(x=>x.id===curGoal);if(!g)return;
+  const link=$('#b2-link').checked,amount=digits('b2-amount'),date=readDate('bd');
+  if(link&&!amount){toast('مبلغ خرید را وارد کن');$('#b2-amount').focus();return}
+  ui.linkBuy=link;g.doneOn=date;g.buyEid='';
+  if(link){const e={id:uid(),type:'expense',amount,cat:'shopping',note:g.name,date,ts:Date.now()};state.expenses.push(e);g.buyEid=e.id}
+  save();render();openGoalDetail(g.id);$('#sheet-goal').scrollTop=0;
+  toast(link?'خرید ثبت شد و در هزینه‌ها هم آمد 🎉':'تبریک! خریدت مبارک 🎉');
+}
+
 /* ---------- backup, restore and export ---------- */
 const DAY_MS=864e5, STALE_MS=14*DAY_MS;
 /* nudge (a small dot on the menu button) when there is data that was never saved to a file, or new data since an old backup */
-const hasData=()=>state.expenses.length>0||state.debts.length>0||state.goals.length>0;
-const latestTs=()=>{let m=0;const f=x=>{if((x.ts||0)>m)m=x.ts};state.expenses.forEach(f);state.debts.forEach(d=>{f(d);d.pays.forEach(f)});state.goals.forEach(g=>{f(g);g.saves.forEach(f)});return m};
+const hasData=()=>state.expenses.length>0||state.debts.length>0||state.goals.length>0||state.recurs.length>0;
+const latestTs=()=>{let m=0;const f=x=>{if((x.ts||0)>m)m=x.ts};state.expenses.forEach(f);state.debts.forEach(d=>{f(d);d.pays.forEach(f)});state.goals.forEach(g=>{f(g);g.saves.forEach(f)});state.recurs.forEach(f);return m};
 const needsBackup=()=>hasData()&&(!ui.backedUp||(Date.now()-ui.backedUp>STALE_MS&&latestTs()>ui.backedUp));
 const pad2=n=>String(n).padStart(2,'0');
 function stampName(){const j=gToJ(todayISO());return j.jy+'-'+pad2(j.jm)+'-'+pad2(j.jd)}
@@ -1117,7 +1329,7 @@ function lastBackupText(){
   const days=Math.floor((Date.now()-ui.backedUp)/DAY_MS);
   return 'آخرین پشتیبان: '+toFa(j.jd)+' '+JM[j.jm-1]+(days>0?' ('+toFa(days)+' روز پیش)':' (امروز)');
 }
-const backupText=()=>JSON.stringify({app:'hazine-yar',v:4,exportedAt:new Date().toISOString(),expenses:state.expenses,budget:state.budget,debts:state.debts,goals:state.goals});
+const backupText=()=>JSON.stringify({app:'hazine-yar',v:5,exportedAt:new Date().toISOString(),expenses:state.expenses,budget:state.budget,debts:state.debts,goals:state.goals,recurs:state.recurs});
 
 const touchDevice=()=>!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
 /* Phones: the share sheet (Save to Files, AirDrop, Telegram...). Everything else: a normal download.
@@ -1180,12 +1392,13 @@ function mergeBackup(text){
     if(hasBudget(nb)){state.budget=nb;gotBudget=true}
   }
   let extra=0;
-  if(!Array.isArray(d)){extra+=mergeList(state.debts,d.debts,normDebt,'pays');extra+=mergeList(state.goals,d.goals,normGoal,'saves')}
+  if(!Array.isArray(d)){extra+=mergeList(state.debts,d.debts,normDebt,'pays');extra+=mergeList(state.goals,d.goals,normGoal,'saves');extra+=mergeList(state.recurs,d.recurs,normRec,null)}
   return{n:n+extra,gotBudget};
 }
 function restoreFrom(text){
   try{
     const r=mergeBackup(text);
+    applyRecurring();
     closeSheets();save();render();
     toast(r.n?toFa(r.n)+' مورد اضافه شد':r.gotBudget?'بودجه بازیابی شد':'مورد جدیدی پیدا نشد؛ همه از قبل بودند');
   }catch(e){toast('این فایل یا متن، پشتیبان معتبر هزینه‌یار نیست')}
@@ -1237,6 +1450,7 @@ function openMenu(){
     +'</details>'
     +'<div class="fl" style="margin-top:18px">دیگر</div>'
     +'<button class="btn soft" data-a="budget">'+(hasBudget(state.budget)?'تنظیم بودجهٔ ماهانه':'تعیین بودجهٔ ماهانه')+'</button>'
+    +'<button class="btn soft" style="margin-top:8px" data-a="rec-list">تراکنش‌های تکرارشونده'+(state.recurs.length?' ('+toFa(state.recurs.length)+')':'')+'</button>'
     +'<button class="btn soft" style="margin-top:8px" data-a="welcome">دیدن معرفی برنامه</button>'
     +'<button class="btn danger" data-a="clear">حذف همهٔ هزینه‌ها و درآمدها</button>';
   $('#bk').value=backupText();
@@ -1281,7 +1495,7 @@ function closeWelcome(){
 }
 
 /* ---------- misc ---------- */
-function closeSheets(){$('#ov-add').classList.remove('open');$('#ov-menu').classList.remove('open');$('#ov-budget').classList.remove('open');$('#ov-debt').classList.remove('open');$('#ov-goal').classList.remove('open');editing=null;debtEditing=null;goalEditing=null}
+function closeSheets(){$('#ov-add').classList.remove('open');$('#ov-menu').classList.remove('open');$('#ov-budget').classList.remove('open');$('#ov-debt').classList.remove('open');$('#ov-goal').classList.remove('open');$('#ov-search').classList.remove('open');$('#ov-rec').classList.remove('open');editing=null;debtEditing=null;goalEditing=null;curRec=null}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1900)}
 function confirmTwice(btn,armedText){
   if(btn.dataset.armed)return true;
@@ -1331,7 +1545,7 @@ function sampleData(){
 
 /* ---------- events ---------- */
 document.addEventListener('click',e=>{
-  if(e.target.classList&&e.target.classList.contains('overlay')){closeSheets();return}
+  if(e.target.classList&&e.target.classList.contains('overlay')){if(e.target.id==='ov-add'&&searchOpen())closeAdd();else closeSheets();return}
   const el=e.target.closest('[data-a]');if(!el)return;
   switch(el.dataset.a){
     case 'mode':ui.mode=el.dataset.m;save();render();break;
@@ -1355,7 +1569,7 @@ document.addEventListener('click',e=>{
     case 'del':
       if(confirmTwice(el,'برای حذف، دوباره لمس کن')){
         const goneMsg=T_TEXT[formType].gone;
-        state.expenses=state.expenses.filter(x=>x!==editing);closeSheets();save();render();toast(goneMsg);
+        state.expenses=state.expenses.filter(x=>x!==editing);afterEntryChange();toast(goneMsg);
       }
       break;
     case 'menu':openMenu();break;
@@ -1365,7 +1579,7 @@ document.addEventListener('click',e=>{
         deferredInstall.userChoice.then(()=>{deferredInstall=null;closeSheets()},()=>{});
       }
       break;
-    case 'close':closeSheets();break;
+    case 'close':closeTop();break;
     case 'copy':copyBackup();break;
     case 'restore':restoreFrom($('#bk').value);break;
     case 'export':exportBackup();break;
@@ -1394,7 +1608,10 @@ document.addEventListener('click',e=>{
     case 'pay-add':addPay();break;
     case 'pay-all':{const d=state.debts.find(x=>x.id===curDebt);if(d){const f=$('#p-amount');f.value=fmt(remOf(d));f.focus()}break}
     case 'pay-del':{
-      if(confirmTwice(el,'مطمئنی؟')){const d=state.debts.find(x=>x.id===curDebt);if(d){d.pays=d.pays.filter(q=>q.id!==el.dataset.id);save();render();openDebtDetail(d.id);toast('حذف شد')}}
+      if(confirmTwice(el,'مطمئنی؟')){const d=state.debts.find(x=>x.id===curDebt);if(d){const q=d.pays.find(z=>z.id===el.dataset.id);d.pays=d.pays.filter(z=>z.id!==el.dataset.id);
+        const had=!!(q&&q.eid&&state.expenses.some(x=>x.id===q.eid));
+        if(had)state.expenses=state.expenses.filter(x=>x.id!==q.eid);
+        save();render();openDebtDetail(d.id);toast(had?'حذف شد؛ ثبت مربوط در دفتر هم برداشته شد':'حذف شد')}}
       break}
     case 'goal-add':openGoalForm();break;
     case 'goal-open':openGoalDetail(el.dataset.id);break;
@@ -1410,8 +1627,37 @@ document.addEventListener('click',e=>{
     case 'sv-del':{
       if(confirmTwice(el,'مطمئنی؟')){const g=state.goals.find(x=>x.id===curGoal);if(g){g.saves=g.saves.filter(q=>q.id!==el.dataset.id);save();render();openGoalDetail(g.id);toast('حذف شد')}}
       break}
-    case 'goal-bought':{const g=state.goals.find(x=>x.id===curGoal);if(g){g.doneOn=todayISO();save();render();openGoalDetail(g.id);$('#sheet-goal').scrollTop=0;toast('تبریک! خریدت مبارک 🎉')}break}
-    case 'goal-reopen':{const g=state.goals.find(x=>x.id===curGoal);if(g){g.doneOn='';save();render();openGoalDetail(g.id);$('#sheet-goal').scrollTop=0;toast('به هدف‌های فعال برگشت')}break}
+    case 'goal-bought':openGoalBuy();break;
+    case 'buy-ok':confirmBuy();break;
+    case 'buy-back':openGoalDetail(curGoal);break;
+    case 'goal-reopen':{
+      const g=state.goals.find(x=>x.id===curGoal);
+      if(g){
+        const had=!!(g.buyEid&&state.expenses.some(x=>x.id===g.buyEid));
+        if(had)state.expenses=state.expenses.filter(x=>x.id!==g.buyEid);
+        g.doneOn='';g.buyEid='';save();render();openGoalDetail(g.id);$('#sheet-goal').scrollTop=0;
+        toast(had?'به هدف‌های فعال برگشت؛ ثبت خرید از هزینه‌ها برداشته شد':'به هدف‌های فعال برگشت');
+      }
+      break}
+    case 'search':openSearch();break;
+    case 'cat-filter':openSearch({type:'expense',cat:el.dataset.c,scope:'range'});break;
+    case 'q-type':ui.q.type=el.dataset.v;paintQ();renderResults();break;
+    case 'q-cat':ui.q.cat=ui.q.cat===el.dataset.c?'':el.dataset.c;paintQ();renderResults();break;
+    case 'q-scope':ui.q.scope=el.dataset.v;paintQ();renderResults();break;
+    case 'rep':
+      formRep=el.dataset.v;
+      document.querySelectorAll('#f-rep .chip').forEach(b=>b.classList.toggle('on',b.dataset.v===formRep));
+      $('#f-repx').hidden=formRep==='none';
+      break;
+    case 'rec-list':closeSheets();openRecList();break;
+    case 'rec-open':openRecEdit(el.dataset.id);break;
+    case 'rec-back':openRecList();break;
+    case 'rcat':recCat=el.dataset.c;document.querySelectorAll('#r-cats .cat').forEach(b=>b.classList.toggle('on',b.dataset.c===recCat));break;
+    case 'rec-save':saveRec();break;
+    case 'rec-pause':toggleRec();break;
+    case 'rec-del':
+      if(confirmTwice(el,'برای حذف، دوباره لمس کن')){state.recurs=state.recurs.filter(x=>x.id!==curRec);save();openRecList();toast('تکرار حذف شد')}
+      break;
     case 'welcome':closeSheets();openWelcome();break;
     case 'w-start':closeWelcome();break;
     case 'w-sample':sampleData();save();render();closeWelcome();break;
@@ -1429,8 +1675,9 @@ document.addEventListener('change',e=>{
   if(e.target.id==='bk-file'){const f=e.target.files&&e.target.files[0];e.target.value='';readBackupFile(f)}
 });
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if(welcomeOpen())closeWelcome();else closeSheets()}
+  if(e.key==='Escape'){if(welcomeOpen())closeWelcome();else closeTop()}
   if(e.key==='Enter'&&e.target.id==='f-note')doSave();
+  if(e.key==='Enter'&&e.target.id==='q-in')e.target.blur();
   if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('numin')){
     if(e.target.closest('#sheet-budget'))saveBudget();
     else if(e.target.id==='f-amount')doSave();
@@ -1445,12 +1692,21 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
   window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})});
 }
 
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible')return;
+  const m=applyRecurring();
+  if(m){save();render();toast(toFa(m)+' تراکنش تکراری ثبت شد')}
+});
+
 (async function init(){
   await load();
+  const made=applyRecurring();
+  if(made)save();
   ui.anchor=todayISO();
   render();
   ui.first=false;
   if(!ui.seen)openWelcome();
+  if(made)toast(toFa(made)+' تراکنش تکراری ثبت شد');
 })();
 })();
 </script>
