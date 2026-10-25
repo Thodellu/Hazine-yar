@@ -21,19 +21,19 @@
 :root{
   color-scheme: light;
   --bg:#f4f6f8; --surface:#ffffff; --sunk:#eceff3; --ink:#14193a; --muted:#667085; --line:#e2e6ec;
-  --lapis:#1c2b73; --turq:#12a594; --turq-ink:#0a7a6c; --saffron:#f4b73f; --saffron-ink:#1c2150; --madder:#d03e3e;
+  --lapis:#1c2b73; --turq:#12a594; --turq-ink:#0a7a6c; --saffron:#f4b73f; --saffron-ink:#1c2150; --madder:#d03e3e; --warn:#a86a00;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme: dark;
     --bg:#0c1122; --surface:#141a33; --sunk:#1d2444; --ink:#e9ecfb; --muted:#8f98bd; --line:#252d52;
-    --lapis:#243586; --turq:#2dd4bf; --turq-ink:#2dd4bf; --madder:#ff7a70;
+    --lapis:#243586; --turq:#2dd4bf; --turq-ink:#2dd4bf; --madder:#ff7a70; --warn:#f4b73f;
   }
 }
 :root[data-theme="dark"]{
   color-scheme: dark;
   --bg:#0c1122; --surface:#141a33; --sunk:#1d2444; --ink:#e9ecfb; --muted:#8f98bd; --line:#252d52;
-  --lapis:#243586; --turq:#2dd4bf; --turq-ink:#2dd4bf; --madder:#ff7a70;
+  --lapis:#243586; --turq:#2dd4bf; --turq-ink:#2dd4bf; --madder:#ff7a70; --warn:#f4b73f;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0}
@@ -215,6 +215,60 @@ details.fold[open] summary::after{content:"−"}
 .lim label{flex:1;font-weight:700;font-size:14.5px}
 .lim .inp{width:46%;font-size:15px;padding:9px 12px}
 
+/* sections switch, debts and goals */
+.views{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--sunk);border-radius:16px;padding:4px;margin-bottom:14px}
+.views button{position:relative;border:0;background:none;color:var(--muted);font-size:14.5px;font-weight:700;padding:9px 0;border-radius:12px;cursor:pointer}
+.views button.on{background:var(--surface);color:var(--ink);font-weight:800;box-shadow:0 1px 4px rgba(10,14,40,.14)}
+.views .bd{position:absolute;top:8px;inset-inline-end:12%;width:8px;height:8px;border-radius:50%;background:var(--madder)}
+.hero.plain .caption{margin-top:4px}
+.chip.on{border-color:var(--turq);background:rgba(18,165,148,.12);font-weight:800}
+.drow{align-items:flex-start}
+.drow .meter{height:6px;margin-top:8px}
+.due{font-size:12px;font-weight:700;color:var(--muted);line-height:1.6}
+.due.soon{color:var(--warn)}
+.due.late{color:var(--madder)}
+.row.done{opacity:.7}
+.kv{display:flex;justify-content:space-between;gap:12px;padding:9px 2px;font-size:14px}
+.kv+.kv{border-top:1px solid var(--line)}
+.kv span{color:var(--muted)}
+.kv b{font-weight:700;text-align:end}
+.dbig{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;margin:2px 0 12px}
+.dbig b{font-size:34px;font-weight:800;line-height:1.3}
+.dbig small{font-size:13px;color:var(--muted)}
+.tag{display:inline-block;font-size:12px;font-weight:800;padding:2px 10px;border-radius:999px;background:var(--sunk);color:var(--muted)}
+.tag.ok{background:rgba(18,165,148,.14);color:var(--turq-ink)}
+.hrow{display:flex;align-items:center;gap:10px;padding:10px 0}
+.hrow+.hrow{border-top:1px solid var(--line)}
+.hrow .d{flex:1;font-size:13.5px;color:var(--muted)}
+.hrow b{font-weight:700;font-size:14.5px}
+.hrow b.pos{color:var(--turq-ink)}
+.linkbtn.dng{color:var(--madder)}
+.gcard{display:block;width:100%;text-align:start;margin-top:10px;padding:16px 16px 14px;background:var(--surface);border:1px solid var(--line);border-radius:20px;color:inherit;font-size:inherit;cursor:pointer}
+.gcard.reached{border-color:var(--turq)}
+.ghead{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.ghead .ico{width:46px;height:46px;font-size:24px;background:var(--sunk)}
+.gpct{font-size:22px;font-weight:800;line-height:1.2}
+.gpct.ok{color:var(--turq-ink)}
+.gmeter{position:relative;height:12px;border-radius:7px;background:var(--sunk);overflow:hidden}
+.gmeter i{display:block;height:100%;border-radius:7px;background:var(--turq)}
+.gmeter::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 24.4%,var(--surface) 24.4% 25.6%,transparent 25.6% 49.4%,var(--surface) 49.4% 50.6%,transparent 50.6% 74.4%,var(--surface) 74.4% 75.6%,transparent 75.6%)}
+.gsteps{position:relative;height:20px;margin-top:5px;font-size:11.5px;color:var(--muted)}
+.gsteps span{position:absolute;top:0;inset-inline-start:var(--p);transform:translateX(50%);white-space:nowrap}
+.gsteps span:last-child{inset-inline-start:auto;inset-inline-end:0;transform:none}
+.gsteps span.on{color:var(--turq-ink);font-weight:800}
+.gline{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 10px;margin-top:6px;font-size:13.5px;color:var(--muted)}
+.gline b{color:var(--ink);font-weight:800;font-size:15px}
+.ghint{margin-top:6px;font-size:13px;color:var(--muted);line-height:1.8}
+.ghint.late{color:var(--madder);font-weight:700}
+.ghint.ok{color:var(--turq-ink);font-weight:800}
+.emojis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.em{height:46px;border:1.5px solid var(--line);background:var(--surface);border-radius:14px;font-size:22px;cursor:pointer;line-height:1}
+.em.on{border-color:var(--turq);background:rgba(18,165,148,.12)}
+
+.kv b.due{font-size:14px;color:var(--ink)}
+.kv b.due.soon{color:var(--warn)}
+.kv b.due.late{color:var(--madder)}
+
 /* welcome screen */
 .welcome{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;overflow:auto;color:#fff;
   background:radial-gradient(130% 55% at 50% 20%,#2a3d94 0%,#18246a 62%);
@@ -273,6 +327,8 @@ details.fold[open] summary::after{content:"−"}
 <div class="overlay" id="ov-add"><div class="sheet" id="sheet-add" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-menu"><div class="sheet" id="sheet-menu" role="dialog" aria-modal="true"></div></div>
 <div class="overlay" id="ov-budget"><div class="sheet" id="sheet-budget" role="dialog" aria-modal="true"></div></div>
+<div class="overlay" id="ov-debt"><div class="sheet" id="sheet-debt" role="dialog" aria-modal="true"></div></div>
+<div class="overlay" id="ov-goal"><div class="sheet" id="sheet-goal" role="dialog" aria-modal="true"></div></div>
 <input type="file" id="bk-file" accept=".json,application/json,text/plain" hidden>
 <div class="toast" id="toast" role="status"></div>
 <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-labelledby="w-t" tabindex="-1"></div>
@@ -381,9 +437,11 @@ const MODES=[['day','روزانه'],['week','هفتگی'],['month','ماهانه
 const KEY='hazine-yar:v1';
 
 /* state.expenses holds both expenses and incomes (field "type"); old data without it counts as expense */
-const state={expenses:[],budget:{total:0,cats:{}}};
-const ui={mode:'month',anchor:todayISO(),first:true,seen:false,theme:'auto',backedUp:0};
+const state={expenses:[],budget:{total:0,cats:{}},debts:[],goals:[]};
+const ui={mode:'month',anchor:todayISO(),first:true,seen:false,theme:'auto',backedUp:0,view:'spend'};
 let storageOK=false, editing=null, formCat='food', formType='expense';
+let curDebt=null, curGoal=null, debtEditing=null, goalEditing=null;
+const dForm={dir:'owe'}, gForm={emoji:'🎯'};
 try{const t0=window.localStorage.getItem('hazine-yar:theme');if(t0==='light'||t0==='dark')ui.theme=t0}catch(e){/* no storage: stays auto */}
 
 const normalize=x=>{
@@ -426,6 +484,8 @@ async function load(){
       if(MODES.some(m=>m[0]===d.mode))ui.mode=d.mode;
       ui.seen=!!d.seen;
       state.budget=normBudget(d.budget);
+      state.debts=Array.isArray(d.debts)?d.debts.map(normDebt).filter(Boolean):[];
+      state.goals=Array.isArray(d.goals)?d.goals.map(normGoal).filter(Boolean):[];
       if(THEMES.some(t=>t[0]===d.theme))ui.theme=d.theme;
       ui.backedUp=(typeof d.backedUp==='number'&&d.backedUp>0)?d.backedUp:0;
     }
@@ -433,7 +493,7 @@ async function load(){
   applyTheme();
 }
 async function save(){
-  try{await writeRaw(JSON.stringify({expenses:state.expenses,budget:state.budget,mode:ui.mode,seen:ui.seen,theme:ui.theme,backedUp:ui.backedUp}))}
+  try{await writeRaw(JSON.stringify({expenses:state.expenses,budget:state.budget,debts:state.debts,goals:state.goals,mode:ui.mode,seen:ui.seen,theme:ui.theme,backedUp:ui.backedUp}))}
   catch(e){storageOK=false}
 }
 
@@ -556,6 +616,7 @@ function budgetSection(mode,r,spent,cats,today,isCur,count){
 }
 
 function render(){
+  if(ui.view!=='spend'){renderOther();return}
   const mode=ui.mode,today=todayISO(),r=range(mode,ui.anchor);
   const list=state.expenses.filter(x=>x.date>=r.s&&x.date<=r.e);
   const spent=spentOf(list);
@@ -568,8 +629,7 @@ function render(){
   const cats=groupCats(spent);
 
   const todayJ=gToJ(today);
-  const header='<header class="top"><div class="brand"><div class="mark">'+I.star(24)+'</div><div><h1>هزینه‌یار</h1><p>امروز '+WD[wIdx(today)]+' '+toFa(todayJ.jd)+' '+JM[todayJ.jm-1]+' '+toFa(todayJ.jy)+'</p></div></div>'
-    +'<button class="icon" data-a="menu" aria-label="تنظیمات و پشتیبان‌گیری">'+I.more+(needsBackup()?'<span class="dot" aria-hidden="true"></span>':'')+'</button></header>';
+  const header=headerHTML();
 
   const tabs='<nav class="tabs" role="tablist">'+MODES.map(m=>'<button role="tab" aria-selected="'+(m[0]===mode)+'" class="'+(m[0]===mode?'on':'')+'" data-a="mode" data-m="'+m[0]+'">'+m[1]+'</button>').join('')+'</nav>';
 
@@ -641,27 +701,30 @@ function render(){
   const foot=storageOK?'':'<p class="foot">ذخیره‌سازی خودکار در این محیط فعال نیست. از منوی بالا، پشتیبان بگیر تا اطلاعاتت از بین نرود.</p>';
   const fab='<button class="fab" data-a="add">'+I.plus+'ثبت جدید</button>';
 
-  $('#root').innerHTML=header+tabs+hero+body+foot+fab;
+  $('#root').innerHTML=header+viewSwitch()+tabs+hero+body+foot+fab;
 }
 
 /* ---------- add / edit sheet ---------- */
 const dayOpts=(y,m,sel)=>{let s='';for(let d=1;d<=jLen(y,m);d++)s+='<option value="'+d+'"'+(d===sel?' selected':'')+'>'+toFa(d)+'</option>';return s};
-function dateFields(iso0){
+function dateFields(iso0,p,fut){
+  p=p||'f';
   const j=gToJ(iso0),cy=gToJ(todayISO()).jy;
-  const y0=Math.min(cy-5,j.jy),y1=Math.max(cy+1,j.jy);let ys='';
+  const y0=Math.min(cy-5,j.jy),y1=Math.max(cy+(fut||1),j.jy);let ys='';
   for(let y=y1;y>=y0;y--)ys+='<option value="'+y+'"'+(y===j.jy?' selected':'')+'>'+toFa(y)+'</option>';
-  return '<div class="dates"><select id="f-d" aria-label="روز">'+dayOpts(j.jy,j.jm,j.jd)+'</select>'
-    +'<select id="f-m" aria-label="ماه">'+JM.map((n,i)=>'<option value="'+(i+1)+'"'+(i+1===j.jm?' selected':'')+'>'+n+'</option>').join('')+'</select>'
-    +'<select id="f-y" aria-label="سال">'+ys+'</select></div>';
+  return '<div class="dates"><select id="'+p+'-d" aria-label="روز">'+dayOpts(j.jy,j.jm,j.jd)+'</select>'
+    +'<select id="'+p+'-m" aria-label="ماه">'+JM.map((n,i)=>'<option value="'+(i+1)+'"'+(i+1===j.jm?' selected':'')+'>'+n+'</option>').join('')+'</select>'
+    +'<select id="'+p+'-y" aria-label="سال">'+ys+'</select></div>';
 }
-function refreshDays(){
-  const y=+$('#f-y').value,m=+$('#f-m').value,cur=+$('#f-d').value;
-  $('#f-d').innerHTML=dayOpts(y,m,Math.min(cur,jLen(y,m)));
+function refreshDays(p){
+  p=p||'f';
+  const y=+$('#'+p+'-y').value,m=+$('#'+p+'-m').value,cur=+$('#'+p+'-d').value;
+  $('#'+p+'-d').innerHTML=dayOpts(y,m,Math.min(cur,jLen(y,m)));
 }
-function setDate(s){
+function setDate(s,p){
+  p=p||'f';
   const j=gToJ(s);
-  $('#f-y').value=j.jy;$('#f-m').value=j.jm;
-  $('#f-d').innerHTML=dayOpts(j.jy,j.jm,j.jd);
+  $('#'+p+'-y').value=j.jy;$('#'+p+'-m').value=j.jm;
+  $('#'+p+'-d').innerHTML=dayOpts(j.jy,j.jm,j.jd);
 }
 const T_TEXT={
   expense:{title:'هزینهٔ جدید',edit:'ویرایش هزینه',save:'ثبت هزینه',del:'حذف هزینه',ph:'مثلاً ناهار با همکارها (اختیاری)',done:'هزینه ثبت شد',gone:'هزینه حذف شد',label:'دسته'},
@@ -735,10 +798,317 @@ function saveBudget(){
   toast(hasBudget(state.budget)?'بودجه ذخیره شد':'بودجه‌ای تعیین نشد');
 }
 
+/* ---------- debts and goals: data helpers ---------- */
+const DIRS={
+  owe:{name:'بدهی من',list:'بدهی‌های من',done:'پرداخت‌شده',btn:'ثبت پرداخت',head:'ثبت پرداخت',pdone:'پرداخت ثبت شد',ph:'مثلاً وام بانک یا نام شخص',lbl:'به چه کسی بدهکاری؟',hint:'پولی که باید پس بدهی.',ico:'💳',col:'#d6457e',hw:'پرداخت'},
+  owed:{name:'طلب من',list:'طلب‌های من',done:'دریافت‌شده',btn:'ثبت دریافت',head:'ثبت دریافت',pdone:'دریافت ثبت شد',ph:'مثلاً نام دوست یا همکار',lbl:'چه کسی به تو بدهکار است؟',hint:'پولی که دیگران باید به تو بدهند.',ico:'🤝',col:'#12a594',hw:'دریافت'}
+};
+const GOAL_EMOJI=['🎯','📱','💻','🚗','🏠','✈️','💍','🎓','🛋️','📷','🎮','👟'];
+const dateRe=/^\d{4}-\d{2}-\d{2}$/;
+const posInt=v=>(typeof v==='number'&&isFinite(v)&&v>0)?Math.round(v):0;
+const normPays=a=>Array.isArray(a)?a.map(p=>(p&&posInt(p.amount)&&dateRe.test(p.date||''))?{id:String(p.id||uid()),amount:posInt(p.amount),date:p.date,ts:p.ts||Date.now()}:null).filter(Boolean):[];
+const normSaves=a=>Array.isArray(a)?a.map(s=>(s&&typeof s.amount==='number'&&isFinite(s.amount)&&Math.round(s.amount)!==0&&dateRe.test(s.date||''))?{id:String(s.id||uid()),amount:Math.round(s.amount),date:s.date,ts:s.ts||Date.now()}:null).filter(Boolean):[];
+const normDebt=x=>{
+  if(!x||!posInt(x.amount))return null;
+  const dir=x.dir==='owed'?'owed':'owe';
+  return{id:String(x.id||uid()),dir,name:String(x.name||'').trim().slice(0,40)||(dir==='owed'?'طلب بدون نام':'بدهی بدون نام'),amount:posInt(x.amount),
+    due:dateRe.test(x.due||'')?x.due:'',note:String(x.note||'').slice(0,80),pays:normPays(x.pays),ts:x.ts||Date.now()};
+};
+const normGoal=x=>{
+  if(!x||!posInt(x.target))return null;
+  return{id:String(x.id||uid()),name:String(x.name||'').trim().slice(0,40)||'هدف من',emoji:GOAL_EMOJI.indexOf(x.emoji)>=0?x.emoji:'🎯',target:posInt(x.target),
+    due:dateRe.test(x.due||'')?x.due:'',saves:normSaves(x.saves),doneOn:dateRe.test(x.doneOn||'')?x.doneOn:'',ts:x.ts||Date.now()};
+};
+const paidOf=d=>d.pays.reduce((a,p)=>a+p.amount,0);
+const remOf=d=>Math.max(0,d.amount-paidOf(d));
+const savedOf=g=>Math.max(0,g.saves.reduce((a,s)=>a+s.amount,0));
+const sumRem=l=>l.reduce((a,d)=>a+remOf(d),0);
+const digits=id=>+toEn($('#'+id).value).replace(/\D/g,'')||0;
+function dueInfo(due,today){
+  if(!due)return null;
+  const n=diffDays(today,due),j=gToJ(due),tj=gToJ(today);
+  const when=toFa(j.jd)+' '+JM[j.jm-1]+(j.jy===tj.jy?'':' '+toFa(j.jy));
+  if(n<0)return{when,n,t:toFa(-n)+' روز گذشته',cls:'late'};
+  if(n===0)return{when,n,t:'امروز',cls:'soon'};
+  return{when,n,t:toFa(n)+' روز دیگر',cls:n<=7?'soon':''};
+}
+const leftText=n=>n<0?'مهلت گذشته':n===0?'امروز':n<=45?toFa(n)+' روز مانده':toFa(Math.round(n/30))+' ماه مانده';
+const debtAlerts=()=>{const t=todayISO();return state.debts.filter(d=>d.due&&remOf(d)>0&&diffDays(t,d.due)<=3).length};
+
+/* ---------- top of every screen: header + section switch ---------- */
+const VIEWS=[['spend','هزینه‌ها'],['debt','بدهی‌ها'],['goal','هدف‌ها']];
+function headerHTML(){
+  const today=todayISO(),todayJ=gToJ(today);
+  return '<header class="top"><div class="brand"><div class="mark">'+I.star(24)+'</div><div><h1>هزینه‌یار</h1><p>امروز '+WD[wIdx(today)]+' '+toFa(todayJ.jd)+' '+JM[todayJ.jm-1]+' '+toFa(todayJ.jy)+'</p></div></div>'
+    +'<button class="icon" data-a="menu" aria-label="تنظیمات و پشتیبان‌گیری">'+I.more+(needsBackup()?'<span class="dot" aria-hidden="true"></span>':'')+'</button></header>';
+}
+function viewSwitch(){
+  const al=debtAlerts();
+  return '<nav class="views" aria-label="بخش‌ها">'+VIEWS.map(v=>'<button class="'+(ui.view===v[0]?'on':'')+'" data-a="view" data-v="'+v[0]+'" aria-pressed="'+(ui.view===v[0])+'">'+v[1]
+    +(v[0]==='debt'&&al?'<span class="bd" role="img" aria-label="سررسید نزدیک"></span>':'')+'</button>').join('')+'</nav>';
+}
+function renderOther(){
+  const today=todayISO(),isDebt=ui.view==='debt';
+  const foot=storageOK?'':'<p class="foot">ذخیره‌سازی خودکار در این محیط فعال نیست. از منوی بالا، پشتیبان بگیر تا اطلاعاتت از بین نرود.</p>';
+  $('#root').innerHTML=headerHTML()+viewSwitch()+(isDebt?debtView(today):goalView(today))+foot
+    +'<button class="fab" data-a="'+(isDebt?'debt-add':'goal-add')+'">'+I.plus+(isDebt?'بدهی جدید':'هدف جدید')+'</button>';
+}
+const sampleLink=()=>(!state.expenses.length&&!state.debts.length&&!state.goals.length)?'<br><button class="link" data-a="sample">امتحان با داده‌های نمونه</button>':'';
+
+/* ---------- debts: list ---------- */
+function debtRow(d,today){
+  const D=DIRS[d.dir],paid=paidOf(d),rem=remOf(d),di=dueInfo(d.due,today),done=rem===0;
+  const sub=done?'تسویه شد':(paid?D.done+' '+compact(paid)+' از '+compact(d.amount):'مبلغ کل '+compact(d.amount)+' تومان');
+  return '<button class="row drow'+(done?' done':'')+'" data-a="debt-open" data-id="'+d.id+'">'
+    +'<div class="ico" style="background:'+hexA(D.col,.16)+'">'+D.ico+'</div>'
+    +'<div class="mid"><div class="name">'+esc(d.name)+'</div><div class="sub">'+sub+'</div>'
+    +(di&&!done?'<div class="due '+di.cls+'">سررسید '+di.when+'، '+di.t+'</div>':'')
+    +(done?'':'<div class="meter"><i style="width:'+Math.min(100,paid/d.amount*100)+'%"></i></div>')+'</div>'
+    +'<div class="amt">'+(done?'✓':fmt(rem)+'<small>تومان مانده</small>')+'</div></button>';
+}
+function debtView(today){
+  const all=state.debts,act=all.filter(d=>remOf(d)>0),done=all.filter(d=>remOf(d)===0);
+  const byDue=(a,b)=>(a.due||'9999').localeCompare(b.due||'9999')||remOf(b)-remOf(a);
+  const oweL=act.filter(d=>d.dir==='owe').sort(byDue),owedL=act.filter(d=>d.dir==='owed').sort(byDue);
+  const oweT=sumRem(oweL),owedT=sumRem(owedL),net=owedT-oweT,has=all.length>0;
+  const nxt=act.filter(d=>d.due).sort((a,b)=>a.due.localeCompare(b.due))[0];
+  const tot=fmt(oweT);
+  const facts=[[compact(owedT),'طلب من'],[has?compactS(net):'—','خالص',has&&net<0],[nxt?dueInfo(nxt.due,today).t:'—','سررسید بعدی']]
+    .map(f=>'<div><b'+(f[2]?' class="neg"':'')+'>'+f[0]+'</b><span>'+f[1]+'</span></div>').join('');
+  let out='<section class="hero plain'+(tot.length>11?' sm':'')+'">'+TILE+'<div class="caption">مجموع بدهی‌های من</div><div class="total"><b>'+tot+'</b><span>تومان</span></div><div class="facts">'+facts+'</div></section>';
+  const sec=(title,list)=>list.length?'<section class="sec"><div class="sec-h"><h2>'+title+'</h2><span>'+toFa(list.length)+' مورد</span></div><div class="panel">'+list.map(d=>debtRow(d,today)).join('')+'</div></section>':'';
+  out+=sec('بدهی‌های من',oweL)+sec('طلب‌های من',owedL);
+  if(done.length)out+='<details class="fold" style="margin-top:22px"><summary>تسویه‌شده‌ها ('+toFa(done.length)+')</summary><div class="panel">'+done.map(d=>debtRow(d,today)).join('')+'</div></details>';
+  if(!has)out+='<div class="empty">'+I.star(46)+'<b>بدهی یا طلبی ثبت نشده</b>وام، قسط یا قرضی که گرفته‌ای یا داده‌ای را ثبت کن؛ هر بار که پرداخت شد، ثبتش کن تا مانده را ببینی.'+sampleLink()+'</div>';
+  return out;
+}
+
+/* ---------- debts: form and detail sheets ---------- */
+function optDate(p,iso0,offLabel,onLabel){
+  const on=!!iso0,base=iso0||addDays(todayISO(),30);
+  return '<div class="odate" id="'+p+'-od" data-on="'+(on?1:0)+'"><div class="quick" style="margin-top:0">'
+    +'<button class="chip'+(on?'':' on')+'" data-a="od" data-p="'+p+'" data-v="0">'+offLabel+'</button>'
+    +'<button class="chip'+(on?' on':'')+'" data-a="od" data-p="'+p+'" data-v="1">'+onLabel+'</button></div>'
+    +'<div class="of" style="margin-top:8px"'+(on?'':' hidden')+'>'+dateFields(base,p,10)+'</div></div>';
+}
+const readDate=p=>jToG(+$('#'+p+'-y').value,+$('#'+p+'-m').value,+$('#'+p+'-d').value);
+const readOptDate=p=>{const w=$('#'+p+'-od');return(w&&w.dataset.on==='1')?readDate(p):''};
+function toggleOptDate(p,on){
+  const w=$('#'+p+'-od');if(!w)return;
+  w.dataset.on=on?'1':'0';
+  w.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',(c.dataset.v==='1')===on));
+  w.querySelector('.of').hidden=!on;
+}
+function openDebtForm(id){
+  const e=id?state.debts.find(x=>x.id===id):null;
+  debtEditing=e||null;
+  dForm.dir=e?e.dir:'owe';
+  const D=DIRS[dForm.dir];
+  $('#sheet-debt').innerHTML=
+    '<div class="s-head"><h2>'+(e?'ویرایش '+D.name:'بدهی یا طلب جدید')+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    +(e?'':'<div class="seg" role="group" aria-label="نوع"><button class="on" data-a="ddir" data-dir="owe" aria-pressed="true">بدهی من</button><button data-a="ddir" data-dir="owed" aria-pressed="false">طلب من</button></div>')
+    +'<p class="note" id="d-hint">'+D.hint+'</p>'
+    +'<div class="fl" style="margin-top:0" id="d-lbl">'+D.lbl+'</div><input id="d-name" class="inp" maxlength="40" placeholder="'+D.ph+'" value="'+esc(e?e.name:'')+'">'
+    +'<div class="fl">مبلغ کل</div><div class="amount"><input id="d-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ کل" value="'+(e?fmt(e.amount):'')+'"><span>تومان</span></div>'
+    +'<div class="fl">سررسید</div>'+optDate('dd',e?e.due:'','بدون سررسید','تعیین تاریخ')
+    +'<div class="fl">توضیح (اختیاری)</div><input id="d-note" class="inp" maxlength="80" placeholder="مثلاً قسط ماهانه" value="'+esc(e?e.note:'')+'">'
+    +'<button class="btn primary" data-a="debt-save">'+(e?'ذخیرهٔ تغییرات':'ثبت')+'</button>';
+  $('#ov-debt').classList.add('open');
+  if(!e)setTimeout(()=>{const f=$('#d-name');if(f)f.focus()},320);
+}
+function setDebtDir(dir){
+  dForm.dir=dir;const D=DIRS[dir];
+  $('#d-hint').textContent=D.hint;$('#d-lbl').textContent=D.lbl;$('#d-name').placeholder=D.ph;
+  document.querySelectorAll('#sheet-debt .seg button').forEach(b=>{const on=b.dataset.dir===dir;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on))});
+}
+function saveDebt(){
+  const name=$('#d-name').value.trim().slice(0,40),amount=digits('d-amount');
+  if(!name){toast('نام را بنویس');$('#d-name').focus();return}
+  if(!amount){toast('مبلغ را وارد کن');$('#d-amount').focus();return}
+  const due=readOptDate('dd'),note=$('#d-note').value.trim().slice(0,80);
+  if(debtEditing){
+    const paid=paidOf(debtEditing);
+    if(amount<paid){toast('مبلغ کل نمی‌تواند کمتر از '+fmt(paid)+' تومان باشد؛ آن‌قدر '+DIRS[debtEditing.dir].done+' شده');return}
+    Object.assign(debtEditing,{name,amount,due,note});
+    const id=debtEditing.id;save();render();openDebtDetail(id);toast('تغییرات ذخیره شد');
+  }else{
+    const d={id:uid(),dir:dForm.dir,name,amount,due,note,pays:[],ts:Date.now()};
+    state.debts.push(d);closeSheets();save();render();toast(DIRS[d.dir].name+' ثبت شد');
+  }
+}
+function openDebtDetail(id){
+  const d=state.debts.find(x=>x.id===id);if(!d)return;
+  curDebt=id;debtEditing=null;
+  const D=DIRS[d.dir],today=todayISO(),paid=paidOf(d),rem=remOf(d),di=dueInfo(d.due,today),done=rem===0;
+  const pays=d.pays.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
+  $('#sheet-debt').innerHTML=
+    '<div class="s-head"><h2>'+esc(d.name)+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    +'<span class="tag'+(done?' ok':'')+'">'+(done?'تسویه شد ✓':D.name)+'</span>'
+    +'<div class="dbig"><b>'+fmt(rem)+'</b><small>تومان مانده</small></div>'
+    +'<div class="meter"><i style="width:'+Math.min(100,paid/d.amount*100)+'%"></i></div>'
+    +'<div style="margin-top:8px">'
+      +'<div class="kv"><span>مبلغ کل</span><b>'+fmt(d.amount)+' تومان</b></div>'
+      +'<div class="kv"><span>'+D.done+'</span><b>'+fmt(paid)+' تومان</b></div>'
+      +(di?'<div class="kv"><span>سررسید</span><b class="due '+(done?'':di.cls)+'">'+di.when+(done?'':'، '+di.t)+'</b></div>':'')
+      +(d.note?'<div class="kv"><span>توضیح</span><b>'+esc(d.note)+'</b></div>':'')
+    +'</div>'
+    +(done?'':'<div class="fl">'+D.head+'</div>'
+      +'<div class="amount"><input id="p-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ" value=""><span>تومان</span></div>'
+      +'<div class="quick"><button class="chip" data-a="pay-all">همهٔ مانده ('+fmt(rem)+')</button></div>'
+      +'<div class="fl">تاریخ</div>'+dateFields(today,'p')
+      +'<button class="btn primary" data-a="pay-add">'+D.btn+'</button>')
+    +(pays.length?'<div class="fl">سابقه</div><div class="panel">'+pays.map(p=>'<div class="hrow"><span class="d">'+dayName(p.date,today)+'</span><b class="'+(d.dir==='owed'?'pos':'')+'">'+fmt(p.amount)+' تومان</b>'
+        +'<button class="linkbtn dng" data-a="pay-del" data-id="'+p.id+'">حذف</button></div>').join('')+'</div>':'')
+    +'<button class="btn soft" style="margin-top:18px" data-a="debt-edit">ویرایش</button>'
+    +'<button class="btn danger" data-a="debt-del">حذف</button>';
+  $('#ov-debt').classList.add('open');
+}
+function addPay(){
+  const d=state.debts.find(x=>x.id===curDebt);if(!d)return;
+  const amount=digits('p-amount'),rem=remOf(d);
+  if(!amount){toast('مبلغ را وارد کن');$('#p-amount').focus();return}
+  if(amount>rem){toast('بیشتر از مانده است ('+fmt(rem)+' تومان)');return}
+  d.pays.push({id:uid(),amount,date:readDate('p'),ts:Date.now()});
+  const settled=remOf(d)===0;
+  save();render();openDebtDetail(d.id);$('#sheet-debt').scrollTop=0;
+  toast(settled?'تسویه شد 🎉':DIRS[d.dir].pdone);
+}
+
+/* ---------- goals: list ---------- */
+function gProgress(pct){
+  return '<div class="gmeter"><i style="width:'+pct+'%"></i></div><div class="gsteps">'
+    +[25,50,75,100].map(s=>'<span class="'+(pct>=s?'on':'')+'" style="--p:'+s+'%">'+(pct>=s?'✓ ':'')+toFa(s)+'٪</span>').join('')+'</div>';
+}
+const goalPct=(g,saved)=>saved>=g.target?100:Math.floor(saved/g.target*100);
+function goalHint(g,saved,today){
+  const rem=g.target-saved;
+  if(rem<=0)return{t:'به مبلغ هدف رسیدی! وقتش است که بخری 🎉',cls:'ok'};
+  if(g.due){
+    const n=diffDays(today,g.due);
+    if(n<0)return{t:'مهلت گذشته؛ '+fmt(rem)+' تومان مانده',cls:'late'};
+    const months=Math.max(1,Math.ceil(n/30)),per=Math.ceil(rem/months/1000)*1000;
+    return{t:'برای رسیدن به موقع، ماهی حدود '+fmt(per)+' تومان کنار بگذار',cls:''};
+  }
+  const first=g.saves.filter(s=>s.amount>0).map(s=>s.date).sort()[0];
+  if(first&&saved>0){
+    const days=diffDays(first,today);
+    if(days>=14){
+      const months=Math.ceil(rem/(saved/days)/30);
+      if(months>120)return{t:'با همین روند خیلی طول می‌کشد؛ مبلغ بیشتری کنار بگذار',cls:''};
+      return{t:months<=1?'با همین روند، تا حدود یک ماه دیگر می‌رسی':'با همین روند، حدود '+toFa(months)+' ماه دیگر می‌رسی',cls:''};
+    }
+  }
+  return{t:'',cls:''};
+}
+function goalCard(g,today){
+  const saved=savedOf(g),reached=saved>=g.target,pct=goalPct(g,saved),h=goalHint(g,saved,today),di=dueInfo(g.due,today);
+  return '<button class="gcard'+(reached?' reached':'')+'" data-a="goal-open" data-id="'+g.id+'">'
+    +'<div class="ghead"><div class="ico">'+g.emoji+'</div><div class="mid"><div class="name">'+esc(g.name)+'</div><div class="sub">'+(di?'تا '+di.when+'، '+leftText(di.n):'بدون مهلت')+'</div></div>'
+    +'<div class="gpct'+(reached?' ok':'')+'">'+toFa(pct)+'٪</div></div>'
+    +gProgress(pct)
+    +'<div class="gline"><span><b>'+fmt(saved)+'</b> از '+fmt(g.target)+' تومان</span>'+(reached?'':'<span>'+fmt(g.target-saved)+' مانده</span>')+'</div>'
+    +(h.t?'<div class="ghint '+h.cls+'">'+h.t+'</div>':'')+'</button>';
+}
+function goalView(today){
+  const all=state.goals,act=all.filter(g=>!g.doneOn),done=all.filter(g=>g.doneOn).sort((a,b)=>b.doneOn.localeCompare(a.doneOn));
+  act.sort((a,b)=>(savedOf(b)>=b.target)-(savedOf(a)>=a.target)||(a.due||'9999').localeCompare(b.due||'9999')||a.ts-b.ts);
+  const savedT=act.reduce((s,g)=>s+Math.min(savedOf(g),g.target),0),targetT=act.reduce((s,g)=>s+g.target,0);
+  const tot=fmt(savedT);
+  const facts=[[act.length?toFa(act.length):'—','هدف فعال'],[act.length?compact(targetT):'—','مبلغ کل هدف‌ها'],[act.length?compact(targetT-savedT):'—','مانده تا همه']]
+    .map(f=>'<div><b>'+f[0]+'</b><span>'+f[1]+'</span></div>').join('');
+  let out='<section class="hero plain'+(tot.length>11?' sm':'')+'">'+TILE+'<div class="caption">پس‌انداز هدف‌های فعال</div><div class="total"><b>'+tot+'</b><span>تومان</span></div><div class="facts">'+facts+'</div></section>';
+  if(act.length)out+='<section class="sec"><div class="sec-h"><h2>هدف‌های من</h2><span>'+toFa(act.length)+' هدف</span></div>'+act.map(g=>goalCard(g,today)).join('')+'</section>';
+  if(done.length)out+='<details class="fold" style="margin-top:22px"><summary>خریداری‌شده‌ها ('+toFa(done.length)+')</summary><div class="panel">'
+    +done.map(g=>'<button class="row done" data-a="goal-open" data-id="'+g.id+'"><div class="ico" style="background:var(--sunk)">'+g.emoji+'</div><div class="mid"><div class="name">'+esc(g.name)+'</div><div class="sub">خریداری‌شده ‌'+dm(g.doneOn)+'</div></div><div class="amt">'+fmt(savedOf(g))+'<em>تومان</em></div></button>').join('')+'</div></details>';
+  if(!all.length)out+='<div class="empty">'+I.star(46)+'<b>هدفی تعیین نشده</b>برای چیزی که می‌خواهی بخری یک هدف بساز و مرحله‌به‌مرحله پس‌انداز کن.'+sampleLink()+'</div>';
+  return out;
+}
+
+/* ---------- goals: form and detail sheets ---------- */
+function openGoalForm(id){
+  const e=id?state.goals.find(x=>x.id===id):null;
+  goalEditing=e||null;gForm.emoji=e?e.emoji:'🎯';
+  $('#sheet-goal').innerHTML=
+    '<div class="s-head"><h2>'+(e?'ویرایش هدف':'هدف جدید')+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    +'<div class="fl" style="margin-top:0">چه چیزی می‌خواهی بخری؟</div><input id="g-name" class="inp" maxlength="40" placeholder="مثلاً لپ‌تاپ جدید" value="'+esc(e?e.name:'')+'">'
+    +'<div class="fl">نماد</div><div class="emojis" id="g-emojis">'+GOAL_EMOJI.map(x=>'<button class="em'+(x===gForm.emoji?' on':'')+'" data-a="emoji" data-e="'+x+'" aria-label="'+x+'">'+x+'</button>').join('')+'</div>'
+    +'<div class="fl">قیمت هدف</div><div class="amount"><input id="g-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="قیمت هدف" value="'+(e?fmt(e.target):'')+'"><span>تومان</span></div>'
+    +'<div class="fl">مهلت رسیدن</div>'+optDate('gd',e?e.due:'','بدون مهلت','تعیین تاریخ')
+    +(e?'':'<div class="fl">تا الان چقدر جمع کرده‌ای؟ (اختیاری)</div><input id="g-init" class="inp numin" inputmode="numeric" autocomplete="off" placeholder="۰ تومان">')
+    +'<button class="btn primary" data-a="goal-save">'+(e?'ذخیرهٔ تغییرات':'ثبت هدف')+'</button>';
+  $('#ov-goal').classList.add('open');
+  if(!e)setTimeout(()=>{const f=$('#g-name');if(f)f.focus()},320);
+}
+function saveGoal(){
+  const name=$('#g-name').value.trim().slice(0,40),target=digits('g-amount');
+  if(!name){toast('اسم چیزی که می‌خواهی بخری را بنویس');$('#g-name').focus();return}
+  if(!target){toast('قیمت هدف را وارد کن');$('#g-amount').focus();return}
+  const due=readOptDate('gd');
+  if(goalEditing){
+    Object.assign(goalEditing,{name,emoji:gForm.emoji,target,due});
+    const id=goalEditing.id;save();render();openGoalDetail(id);toast('تغییرات ذخیره شد');
+  }else{
+    const init=digits('g-init');
+    const g={id:uid(),name,emoji:gForm.emoji,target,due,saves:[],doneOn:'',ts:Date.now()};
+    if(init)g.saves.push({id:uid(),amount:init,date:todayISO(),ts:Date.now()});
+    state.goals.push(g);closeSheets();save();render();toast('هدف ثبت شد');
+  }
+}
+function openGoalDetail(id){
+  const g=state.goals.find(x=>x.id===id);if(!g)return;
+  curGoal=id;goalEditing=null;
+  const today=todayISO(),saved=savedOf(g),rem=Math.max(0,g.target-saved),reached=saved>=g.target,pct=goalPct(g,saved),h=goalHint(g,saved,today),di=dueInfo(g.due,today),done=!!g.doneOn;
+  const hist=g.saves.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts);
+  $('#sheet-goal').innerHTML=
+    '<div class="s-head"><h2>'+g.emoji+' '+esc(g.name)+'</h2><button class="icon" data-a="close" aria-label="بستن">'+I.close+'</button></div>'
+    +(done?'<span class="tag ok">خریداری‌شده در '+dm(g.doneOn)+'</span>':(di?'<span class="tag">تا '+di.when+'، '+leftText(di.n)+'</span>':''))
+    +'<div class="dbig"><b>'+fmt(saved)+'</b><small>از '+fmt(g.target)+' تومان</small></div>'
+    +gProgress(pct)
+    +(h.t&&!done?'<div class="ghint '+h.cls+'">'+h.t+'</div>':'')
+    +(done?'':'<div class="fl">پس‌انداز</div>'
+      +'<div class="amount"><input id="s-amount" class="numin" inputmode="numeric" autocomplete="off" placeholder="۰" aria-label="مبلغ" value=""><span>تومان</span></div>'
+      +(rem?'<div class="quick"><button class="chip" data-a="sv-fill">تا رسیدن به هدف ('+fmt(rem)+')</button></div>':'')
+      +'<div class="fl">تاریخ</div>'+dateFields(today,'sv')
+      +'<div class="two" style="margin-top:14px"><button class="btn primary" style="margin-top:0" data-a="sv-add">واریز به پس‌انداز</button><button class="btn soft" data-a="sv-out">برداشت</button></div>'
+      +(reached?'<button class="btn primary" style="margin-top:12px" data-a="goal-bought">خریدمش! 🎉</button>'
+               :'<button class="btn soft" style="margin-top:12px" data-a="goal-bought">خریدم (بستن این هدف)</button>'))
+    +(done?'<button class="btn soft" style="margin-top:14px" data-a="goal-reopen">بازگرداندن به هدف‌های فعال</button>':'')
+    +(hist.length?'<div class="fl">سابقه</div><div class="panel">'+hist.map(s=>'<div class="hrow"><span class="d">'+dayName(s.date,today)+'</span><b class="'+(s.amount>0?'pos':'')+'">'
+        +(s.amount>0?'<bdi dir="ltr">+'+fmt(s.amount)+'</bdi>':'<bdi dir="ltr">−'+fmt(-s.amount)+'</bdi>')+' تومان</b>'
+        +'<button class="linkbtn dng" data-a="sv-del" data-id="'+s.id+'">حذف</button></div>').join('')+'</div>':'')
+    +'<button class="btn soft" style="margin-top:18px" data-a="goal-edit">ویرایش</button>'
+    +'<button class="btn danger" data-a="goal-del">حذف</button>';
+  $('#ov-goal').classList.add('open');
+}
+function addSave(sign){
+  const g=state.goals.find(x=>x.id===curGoal);if(!g)return;
+  const amount=digits('s-amount'),saved=savedOf(g);
+  if(!amount){toast('مبلغ را وارد کن');$('#s-amount').focus();return}
+  if(sign<0&&amount>saved){toast('بیشتر از پس‌اندازت است ('+fmt(saved)+' تومان)');return}
+  g.saves.push({id:uid(),amount:sign*amount,date:readDate('sv'),ts:Date.now()});
+  const reached=savedOf(g)>=g.target;
+  save();render();openGoalDetail(g.id);$('#sheet-goal').scrollTop=0;
+  toast(sign<0?'برداشت ثبت شد':(reached&&saved<g.target?'به هدفت رسیدی 🎉':'به پس‌انداز اضافه شد'));
+}
+
+/* Restore helper: add what is missing; for items that already exist, add only their missing payments / deposits. */
+function mergeList(list,incoming,norm,sub){
+  let n=0;const byId=new Map(list.map(x=>[x.id,x]));
+  (Array.isArray(incoming)?incoming:[]).map(norm).filter(Boolean).forEach(x=>{
+    const ex=byId.get(x.id);
+    if(!ex){list.push(x);byId.set(x.id,x);n++;return}
+    const have=new Set(ex[sub].map(q=>q.id));
+    x[sub].forEach(q=>{if(!have.has(q.id)){ex[sub].push(q);have.add(q.id);n++}});
+  });
+  return n;
+}
+
 /* ---------- backup, restore and export ---------- */
 const DAY_MS=864e5, STALE_MS=14*DAY_MS;
 /* nudge (a small dot on the menu button) when there is data that was never saved to a file, or new data since an old backup */
-const needsBackup=()=>state.expenses.length>0&&(!ui.backedUp||(Date.now()-ui.backedUp>STALE_MS&&state.expenses.some(x=>(x.ts||0)>ui.backedUp)));
+const hasData=()=>state.expenses.length>0||state.debts.length>0||state.goals.length>0;
+const latestTs=()=>{let m=0;const f=x=>{if((x.ts||0)>m)m=x.ts};state.expenses.forEach(f);state.debts.forEach(d=>{f(d);d.pays.forEach(f)});state.goals.forEach(g=>{f(g);g.saves.forEach(f)});return m};
+const needsBackup=()=>hasData()&&(!ui.backedUp||(Date.now()-ui.backedUp>STALE_MS&&latestTs()>ui.backedUp));
 const pad2=n=>String(n).padStart(2,'0');
 function stampName(){const j=gToJ(todayISO());return j.jy+'-'+pad2(j.jm)+'-'+pad2(j.jd)}
 function lastBackupText(){
@@ -747,7 +1117,7 @@ function lastBackupText(){
   const days=Math.floor((Date.now()-ui.backedUp)/DAY_MS);
   return 'آخرین پشتیبان: '+toFa(j.jd)+' '+JM[j.jm-1]+(days>0?' ('+toFa(days)+' روز پیش)':' (امروز)');
 }
-const backupText=()=>JSON.stringify({app:'hazine-yar',v:3,exportedAt:new Date().toISOString(),expenses:state.expenses,budget:state.budget});
+const backupText=()=>JSON.stringify({app:'hazine-yar',v:4,exportedAt:new Date().toISOString(),expenses:state.expenses,budget:state.budget,debts:state.debts,goals:state.goals});
 
 const touchDevice=()=>!!(window.matchMedia&&window.matchMedia('(pointer: coarse)').matches);
 /* Phones: the share sheet (Save to Files, AirDrop, Telegram...). Everything else: a normal download.
@@ -770,7 +1140,7 @@ function markBackedUp(){
   const el=$('#bk-last');if(el)el.textContent=lastBackupText();
 }
 async function exportBackup(){
-  if(!state.expenses.length&&!hasBudget(state.budget)){toast('هنوز چیزی برای پشتیبان‌گیری نیست');return}
+  if(!hasData()&&!hasBudget(state.budget)){toast('هنوز چیزی برای پشتیبان‌گیری نیست');return}
   const ok=await saveFile('hazine-yar-backup-'+stampName()+'.json','application/json',backupText());
   if(ok){ui.backedUp=Date.now();save();markBackedUp();toast('فایل پشتیبان آماده شد')}
 }
@@ -809,7 +1179,9 @@ function mergeBackup(text){
     const nb=normBudget(d.budget);
     if(hasBudget(nb)){state.budget=nb;gotBudget=true}
   }
-  return{n,gotBudget};
+  let extra=0;
+  if(!Array.isArray(d)){extra+=mergeList(state.debts,d.debts,normDebt,'pays');extra+=mergeList(state.goals,d.goals,normGoal,'saves')}
+  return{n:n+extra,gotBudget};
 }
 function restoreFrom(text){
   try{
@@ -909,7 +1281,7 @@ function closeWelcome(){
 }
 
 /* ---------- misc ---------- */
-function closeSheets(){$('#ov-add').classList.remove('open');$('#ov-menu').classList.remove('open');$('#ov-budget').classList.remove('open');editing=null}
+function closeSheets(){$('#ov-add').classList.remove('open');$('#ov-menu').classList.remove('open');$('#ov-budget').classList.remove('open');$('#ov-debt').classList.remove('open');$('#ov-goal').classList.remove('open');editing=null;debtEditing=null;goalEditing=null}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1900)}
 function confirmTwice(btn,armedText){
   if(btn.dataset.armed)return true;
@@ -944,6 +1316,17 @@ function sampleData(){
   }
   state.expenses=out;
   if(!hasBudget(state.budget))state.budget={total:12000000,cats:{food:4000000,transport:1500000,fun:1500000}};
+  const P=(a,off)=>({id:uid(),amount:a,date:addDays(today,off),ts:Date.now()-Math.abs(off)*1000});
+  if(!state.debts.length)state.debts=[
+    {id:uid(),dir:'owe',name:'وام بانک',amount:60000000,due:addDays(today,9),note:'قسط ماهانه',pays:[P(10000000,-70),P(10000000,-40),P(10000000,-10)],ts:Date.now()-5},
+    {id:uid(),dir:'owe',name:'کارت اعتباری',amount:8000000,due:addDays(today,-2),note:'',pays:[P(3000000,-20)],ts:Date.now()-4},
+    {id:uid(),dir:'owed',name:'علی (قرض)',amount:5000000,due:addDays(today,20),note:'',pays:[P(2000000,-5)],ts:Date.now()-3}
+  ];
+  if(!state.goals.length)state.goals=[
+    {id:uid(),name:'لپ‌تاپ جدید',emoji:'💻',target:45000000,due:addDays(today,120),saves:[P(8000000,-95),P(7000000,-62),P(6000000,-33),P(6000000,-4)],doneOn:'',ts:Date.now()-5},
+    {id:uid(),name:'سفر شمال',emoji:'✈️',target:20000000,due:'',saves:[P(12000000,-60),P(8000000,-8)],doneOn:'',ts:Date.now()-4},
+    {id:uid(),name:'گوشی جدید',emoji:'📱',target:30000000,due:'',saves:[P(4000000,-10)],doneOn:'',ts:Date.now()-3}
+  ];
 }
 
 /* ---------- events ---------- */
@@ -998,6 +1381,37 @@ document.addEventListener('click',e=>{
       }
       break;
     case 'sample':sampleData();save();render();break;
+    case 'view':ui.view=el.dataset.v;render();window.scrollTo(0,0);break;
+    case 'od':toggleOptDate(el.dataset.p,el.dataset.v==='1');break;
+    case 'debt-add':openDebtForm();break;
+    case 'debt-open':openDebtDetail(el.dataset.id);break;
+    case 'debt-edit':openDebtForm(curDebt);break;
+    case 'ddir':setDebtDir(el.dataset.dir);break;
+    case 'debt-save':saveDebt();break;
+    case 'debt-del':
+      if(confirmTwice(el,'برای حذف، دوباره لمس کن')){state.debts=state.debts.filter(x=>x.id!==curDebt);closeSheets();save();render();toast('حذف شد')}
+      break;
+    case 'pay-add':addPay();break;
+    case 'pay-all':{const d=state.debts.find(x=>x.id===curDebt);if(d){const f=$('#p-amount');f.value=fmt(remOf(d));f.focus()}break}
+    case 'pay-del':{
+      if(confirmTwice(el,'مطمئنی؟')){const d=state.debts.find(x=>x.id===curDebt);if(d){d.pays=d.pays.filter(q=>q.id!==el.dataset.id);save();render();openDebtDetail(d.id);toast('حذف شد')}}
+      break}
+    case 'goal-add':openGoalForm();break;
+    case 'goal-open':openGoalDetail(el.dataset.id);break;
+    case 'goal-edit':openGoalForm(curGoal);break;
+    case 'emoji':gForm.emoji=el.dataset.e;document.querySelectorAll('#g-emojis .em').forEach(b=>b.classList.toggle('on',b.dataset.e===gForm.emoji));break;
+    case 'goal-save':saveGoal();break;
+    case 'goal-del':
+      if(confirmTwice(el,'برای حذف، دوباره لمس کن')){state.goals=state.goals.filter(x=>x.id!==curGoal);closeSheets();save();render();toast('هدف حذف شد')}
+      break;
+    case 'sv-add':addSave(1);break;
+    case 'sv-out':addSave(-1);break;
+    case 'sv-fill':{const g=state.goals.find(x=>x.id===curGoal);if(g){const f=$('#s-amount');f.value=fmt(Math.max(0,g.target-savedOf(g)));f.focus()}break}
+    case 'sv-del':{
+      if(confirmTwice(el,'مطمئنی؟')){const g=state.goals.find(x=>x.id===curGoal);if(g){g.saves=g.saves.filter(q=>q.id!==el.dataset.id);save();render();openGoalDetail(g.id);toast('حذف شد')}}
+      break}
+    case 'goal-bought':{const g=state.goals.find(x=>x.id===curGoal);if(g){g.doneOn=todayISO();save();render();openGoalDetail(g.id);$('#sheet-goal').scrollTop=0;toast('تبریک! خریدت مبارک 🎉')}break}
+    case 'goal-reopen':{const g=state.goals.find(x=>x.id===curGoal);if(g){g.doneOn='';save();render();openGoalDetail(g.id);$('#sheet-goal').scrollTop=0;toast('به هدف‌های فعال برگشت')}break}
     case 'welcome':closeSheets();openWelcome();break;
     case 'w-start':closeWelcome();break;
     case 'w-sample':sampleData();save();render();closeWelcome();break;
@@ -1010,14 +1424,20 @@ document.addEventListener('input',e=>{
   }
 });
 document.addEventListener('change',e=>{
-  if(e.target.id==='f-m'||e.target.id==='f-y')refreshDays();
+  const idm=/^([a-z]+)-[my]$/.exec(e.target.id||'');
+  if(idm&&e.target.closest('.dates'))refreshDays(idm[1]);
   if(e.target.id==='bk-file'){const f=e.target.files&&e.target.files[0];e.target.value='';readBackupFile(f)}
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if(welcomeOpen())closeWelcome();else closeSheets()}
   if(e.key==='Enter'&&e.target.id==='f-note')doSave();
   if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('numin')){
-    if(e.target.closest('#sheet-budget'))saveBudget();else if(e.target.id==='f-amount')doSave();
+    if(e.target.closest('#sheet-budget'))saveBudget();
+    else if(e.target.id==='f-amount')doSave();
+    else if(e.target.id==='p-amount')addPay();
+    else if(e.target.id==='d-amount')saveDebt();
+    else if(e.target.id==='g-amount')saveGoal();
+    else if(e.target.id==='s-amount')addSave(1);
   }
 });
 
